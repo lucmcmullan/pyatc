@@ -1,7 +1,7 @@
 from atc.objects.runway_v2 import all_runways
 from atc.objects.aircraft_v2 import spawn_random_plane
 from atc.radar import draw_radar, draw_performance_menu
-from atc.utils import check_conflicts, calculate_layout
+from atc.utils import check_conflicts, calculate_layout, get_current_version
 from atc.command_parser import CommandParser
 from constants import WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE
 import pygame, sys, traceback, time
@@ -10,6 +10,7 @@ from collections import defaultdict
 # v1.5.1
 
 parser = CommandParser()
+VERSION = get_current_version()
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     """Log uncaught exceptions instead of crashing."""
@@ -18,16 +19,14 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
     
-    # Build formatted traceback
     error_text = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     entry = f"[{timestamp}]\n{error_text}\n{'-'*60}\n"
 
-    # Write to file
     with open(ERROR_LOG_FILE, "a", encoding="utf-8") as f:
         f.write(entry)
 
-    fatal_error = entry  # store to show in overlay later
+    fatal_error = entry 
     print("A fatal error occurred — logged to error_log.txt")
 
 sys.excepthook = handle_exception
@@ -35,7 +34,7 @@ sys.excepthook = handle_exception
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("PYATC")
+    pygame.display.set_caption(f"PyATC {VERSION}")
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("consolas", 16)
     

@@ -1,6 +1,20 @@
 import math
 from constants import *
 
+def get_current_version() -> str:
+    try:
+        with open("versions.txt", "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        
+        if len(lines) >= 3:
+            line = lines[2].strip() # 3rd line
+            if line.lower().startswith("current -"):
+                return line.split("-", 1)[1].strip()
+    except Exception as e:
+        pass
+
+    return "v0.0.0"
+
 def load_runways(): return RUNWAYS
 def nm_to_px(nm): return nm/NM_PER_PX
 def px_to_nm(px): return px*NM_PER_PX
