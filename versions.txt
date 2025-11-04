@@ -107,8 +107,5 @@ Current - v1.6.3
         - Added text input blip in console
         - Implement holding backspace to delete input
         - Auto switch log to last aircraft radio'ed
-        
-    1.6.4a - "Airports"
-        - Added airport container to host Runways
-        - Clicking airports lets the user see any aircraft in that selection
-        - Not a physical object
+        - Add fatal error logging/handling
+        - Add performance logs

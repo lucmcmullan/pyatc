@@ -1,5 +1,5 @@
-import pygame
-import math
+import math, pygame
+import psutil
 from atc.utils import heading_to_vec, load_fixes, nm_to_px, wrap_text, calculate_layout
 from constants import WIDTH, HEIGHT
 
@@ -29,6 +29,42 @@ def draw_aircraft(screen, font, plane, active=False):
     screen.blit(text_callsign, (plane.x + 10, plane.y - 20))
     screen.blit(text_info, (plane.x + 10, plane.y - 5))
 
+def draw_performance_menu(screen, font, clock, planes, runways, sim_speed):
+    fps = int(clock.get_fps())
+    cpu_percent = psutil.cpu_percent(interval=None)
+    mem = psutil.virtual_memory()
+    used_mem_mb = mem.used / (1024 ** 2)
+    total_mem_mb = mem.total / (1024 ** 2)
+
+    aircraft_count = len(planes)
+    runway_count = len(runways)
+    occupied = [r.name for r in runways if r.status == "OCCUPIED"]
+    queued_commands = sum(len(p.command_queue) for p in planes)
+
+    lines = [
+        "PERFORMANCE PROFILE"
+        f"FPS: {fps}",
+        f"Simulation speed: {sim_speed:.1f}x",
+        f"CPU usage: {cpu_percent:.1f}%",
+        f"Memory: {used_mem_mb:.0f} / {total_mem_mb:.0f} MB",
+        f"Aircraft active: {aircraft_count}",
+        f"Runways active: {runway_count}",
+        f"Runways occupied: {', '.join(occupied) if occupied else 'None'}",
+        f"Total queued commands: {queued_commands}",
+    ]
+
+    width = 360
+    height = len(lines) * 22 + 20
+    surf = pygame.Surface((width, height), pygame.SRCALPHA)
+    surf.fill((10, 10, 10, 210))
+
+    y = 10
+    for line in lines:
+        text = font.render(line, True, (255, 255, 180))
+        surf.blit(text, (10, y))
+        y += 22
+
+    screen.blit(surf, (10, 10))
 
 def draw_radar(screen, planes, font, messages, conflicts,
                radio_log=None, active_cs=None, selected_plane=None, radio_scroll=0, 

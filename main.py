@@ -1,6 +1,6 @@
 from atc.objects.runway_v2 import all_runways
 from atc.objects.aircraft_v2 import spawn_random_plane
-from atc.radar import draw_radar
+from atc.radar import draw_radar, draw_performance_menu
 from atc.utils import check_conflicts, calculate_layout
 from atc.command_parser import CommandParser
 from constants import WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE
@@ -195,6 +195,9 @@ def main():
             header = font.render("FATAL ERROR — PRESS F9 TO HIDE", True, (255, 255, 0))
             screen.blit(header, (60, 60))
 
+        if show_perf:
+            draw_performance_menu(screen, font, clock, planes, runways, SIM_SPEED)
+            
         pygame.draw.rect(screen, (20, 20, 20), (0, HEIGHT - console_height, WIDTH, console_height))
         
         prompt = "> " + input_str
