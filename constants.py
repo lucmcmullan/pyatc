@@ -25,6 +25,8 @@ RUNWAYS = [
 LANDING_HEADING_OFFSET_DEG = 60
 LANDING_HEIGHT_OFFSET_FT = 3000
 
+ERROR_LOG_FILE = "error_log.txt"
+
 AIRLINES = {
     "British Airways": {
         "IATA": "BA",
