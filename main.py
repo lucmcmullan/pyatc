@@ -61,11 +61,13 @@ def main():
                             active_cs = p.callsign
                             radio_scroll = 0
                             input_str = f"{p.callsign} " # append selected aircraft cs to input
+                            cursor_pos = len(input_str)
                             break
                         else:
                             selected_plane = None   # reset selected plane if
                             active_cs = None        # mouse clicks off-plane
                             input_str = ""
+                            cursor_pos = 0
                             
                 elif event.button == 4: # scroll down
                     radio_scroll = max(0, radio_scroll - 1)
