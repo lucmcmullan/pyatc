@@ -1,7 +1,88 @@
-import math, pygame
-import psutil
+import math, pygame, psutil
 from atc.utils import heading_to_vec, load_fixes, nm_to_px, wrap_text, calculate_layout
 from constants import WIDTH, HEIGHT
+
+def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None, live=False):
+    HEIGHT = pygame.display.get_surface().get_height()
+    if not layout:
+        layout = calculate_layout(WIDTH, HEIGHT)
+
+    SIDEBAR_WIDTH = layout["SIDEBAR_WIDTH"]
+    RADAR_WIDTH = layout["RADAR_WIDTH"]
+    
+
+    panel_x = RADAR_WIDTH - SIDEBAR_WIDTH - 10
+    panel_y = 50
+    panel_w = SIDEBAR_WIDTH - 20
+    panel_h = HEIGHT - 100
+
+    pygame.draw.rect(screen, (10, 10, 10), (panel_x, panel_y, panel_w, panel_h))
+    pygame.draw.rect(screen, (100, 100, 100), (panel_x, panel_y, panel_w, panel_h), 1)
+
+    title = font.render("FLIGHT PROGRESS LOG", True, (255, 255, 0))
+    screen.blit(title, (panel_x + 10, panel_y + 10))
+
+    expand_icon = pygame.Rect(panel_x + panel_w - 25, panel_y + 5, 18, 18)
+    pygame.draw.rect(screen, (80, 80, 80), expand_icon)
+    pygame.draw.line(screen, (255, 255, 0), expand_icon.topleft, expand_icon.bottomright, 2)
+    pygame.draw.line(screen, (255, 255, 0), expand_icon.topright, expand_icon.bottomleft, 2)
+
+    if live:
+        aircraft_list = planes_or_snapshot
+    else:
+        aircraft_list = [
+            {
+                "callsign": ac.callsign,
+                "alt": getattr(ac, "alt", 0),
+                "spd": getattr(ac, "spd", 0),
+                "hdg": getattr(ac, "hdg", 0),
+                "state": getattr(ac, "state", "UNKNOWN"),
+            }
+            for ac in planes_or_snapshot
+        ]
+
+    y = panel_y + 35
+    row_h = 24
+
+    for ac in aircraft_list:
+        state = ac.get("state", "UNKNOWN").upper()
+
+        if state in ("AIRBORNE", "CLIMBING", "CRUISE"):
+            bg = (20, 80, 20)
+        elif state in ("LANDING", "APPROACH"):
+            bg = (120, 30, 30)
+        elif state == "TAKEOFF":
+            bg = (120, 120, 30)
+        elif state == "LANDED":
+            bg = (40, 40, 40)
+        else:
+            bg = (30, 30, 30)
+
+        pygame.draw.rect(screen, bg, (panel_x + 5, y, panel_w - 10, row_h))
+
+        info = f"{ac['callsign']:8}  {int(ac['alt']):5}ft  {int(ac['spd']):3}kt  {int(ac['hdg']):03d}°"
+        txt = font.render(info, True, (255, 255, 255))
+        screen.blit(txt, (panel_x + 10, y + 3))
+
+        y += row_h + 2
+        if y > panel_y + panel_h - row_h:
+            break
+
+    # --- Legend ---
+    legend_y = panel_y + panel_h - 90
+    legend = [
+        ("Airborne", (20, 80, 20)),
+        ("Approach", (120, 30, 30)),
+        ("Takeoff", (120, 120, 30)),
+        ("Landed", (40, 40, 40)),
+    ]
+    for label, color in legend:
+        pygame.draw.rect(screen, color, (panel_x + 10, legend_y, 15, 15))
+        text = font.render(label, True, (200, 200, 200))
+        screen.blit(text, (panel_x + 30, legend_y - 2))
+        legend_y += 18
+
+    return {"expand_icon": expand_icon}
 
 def draw_aircraft(screen, font, plane, active=False):
     colour = (0, 255, 0) if not active else (255, 255, 0)
@@ -29,6 +110,7 @@ def draw_aircraft(screen, font, plane, active=False):
     screen.blit(text_callsign, (plane.x + 10, plane.y - 20))
     screen.blit(text_info, (plane.x + 10, plane.y - 5))
 
+
 def draw_performance_menu(screen, font, clock, planes, runways, sim_speed):
     fps = int(clock.get_fps())
     cpu_percent = psutil.cpu_percent(interval=None)
@@ -42,7 +124,7 @@ def draw_performance_menu(screen, font, clock, planes, runways, sim_speed):
     queued_commands = sum(len(p.command_queue) for p in planes)
 
     lines = [
-        "PERFORMANCE PROFILE"
+        "=== PERFORMANCE PROFILE ===",
         f"FPS: {fps}",
         f"Simulation speed: {sim_speed:.1f}x",
         f"CPU usage: {cpu_percent:.1f}%",
@@ -54,9 +136,14 @@ def draw_performance_menu(screen, font, clock, planes, runways, sim_speed):
     ]
 
     width = 360
-    height = len(lines) * 22 + 20
+    height = len(lines) * 22 + 40
     surf = pygame.Surface((width, height), pygame.SRCALPHA)
     surf.fill((10, 10, 10, 210))
+
+    expand_rect = pygame.Rect(width - 25, 8, 18, 18)
+    pygame.draw.rect(surf, (80, 80, 80), expand_rect)
+    pygame.draw.line(surf, (255, 255, 0), expand_rect.topleft, expand_rect.bottomright, 2)
+    pygame.draw.line(surf, (255, 255, 0), expand_rect.topright, expand_rect.bottomleft, 2)
 
     y = 10
     for line in lines:
@@ -65,11 +152,13 @@ def draw_performance_menu(screen, font, clock, planes, runways, sim_speed):
         y += 22
 
     screen.blit(surf, (10, 10))
+    return {"expand_icon": expand_rect.move(10, 10)}
+
 
 def draw_radar(screen, planes, font, messages, conflicts,
-               radio_log=None, active_cs=None, selected_plane=None, radio_scroll=0, 
+               radio_log=None, active_cs=None, selected_plane=None, radio_scroll=0,
                runways=None):
-
+    
     layout = calculate_layout(WIDTH, HEIGHT)
     RADAR_WIDTH = layout["RADAR_WIDTH"]
     RADAR_CENTER = layout["RADAR_CENTER"]
@@ -84,61 +173,50 @@ def draw_radar(screen, planes, font, messages, conflicts,
         for rw in runways:
             rw.draw(screen, font)
 
-    # VOR, fixes
     fixes = load_fixes()
     for name, position in fixes.items():
         x, y = position["x"], position["y"]
         scale = position.get("ring_scale", 1.0)
 
-        # --- Scaled range rings ---
         for nm in range(10, 30, 10):
             pixel = int(nm_to_px(nm) * scale)
             pygame.draw.circle(screen, (50, 50, 100), (x, y), pixel, 1)
             text = font.render(f"{nm}", True, (100, 120, 180))
             screen.blit(text, (x + pixel + 4, y - int(8 * scale)))
 
-        # --- Scaled radial lines ---
         for deg in range(0, 360, 30):
             rad = math.radians(deg)
             dx = math.sin(rad) * nm_to_px(20) * scale
             dy = -math.cos(rad) * nm_to_px(20) * scale
             pygame.draw.line(screen, (60, 60, 120), (x, y), (x + dx, y + dy))
 
-        # --- Scaled fix marker ---
         pygame.draw.circle(screen, (100, 100, 255), (x, y), int(5 * scale))
         pygame.draw.circle(screen, (180, 180, 255), (x, y), int(2 * scale))
-
-        # --- Scaled label ---
         label = font.render(name, True, (180, 180, 255))
         screen.blit(label, (x + int(10 * scale), y - int(10 * scale)))
 
-    # radar grid, circles
     for radius in range(100, 1300, 100):
         pygame.draw.circle(screen, (0, 60, 0), RADAR_CENTER, radius, 1)
 
     pygame.draw.line(screen, (0, 60, 0), (RADAR_CENTER[0], 0), (RADAR_CENTER[0], HEIGHT), 1)
     pygame.draw.line(screen, (0, 60, 0), (0, RADAR_CENTER[1]), (RADAR_WIDTH, RADAR_CENTER[1]), 1)
 
-    # aircraft
     for plane in planes:
         draw_aircraft(screen, font, plane, active=(plane.callsign == active_cs))
 
-    # conflicts
     y = 5
     for a, b, lat, vert in conflicts:
         msg = f"CONFLICT {a.callsign}-{b.callsign} {lat:.1f}NM {vert:.0f}FT"
         screen.blit(font.render(msg, True, (255, 80, 80)), (5, y))
         y += 18
 
-    # bottom log panel
-    #y = HEIGHT - BOTTOM_MARGIN
-    #for m in messages[-5:]:
-    #    screen.blit(font.render(m, True, (255, 255, 255)), (5, y))
-    #    y += 18
-
-    # radio log panel
     pygame.draw.rect(screen, (10, 10, 10), (sidebar_x, 0, SIDEBAR_WIDTH, HEIGHT))
     pygame.draw.line(screen, (60, 60, 60), (sidebar_x, 0), (sidebar_x, HEIGHT), 1)
+
+    expand_icon = pygame.Rect(sidebar_x + SIDEBAR_WIDTH - 25, 5, 18, 18)
+    pygame.draw.rect(screen, (80, 80, 80), expand_icon)
+    pygame.draw.line(screen, (255, 255, 0), expand_icon.topleft, expand_icon.bottomright, 2)
+    pygame.draw.line(screen, (255, 255, 0), expand_icon.topright, expand_icon.bottomleft, 2)
 
     display_plane = selected_plane
     if not display_plane and active_cs:
@@ -172,7 +250,6 @@ def draw_radar(screen, planes, font, messages, conflicts,
                     screen.blit(txt, (sidebar_x + 10, y))
                     y += 18
 
-            # scroll bar
             if len(log) > visible_lines:
                 total = len(log) - visible_lines
                 bar_h = max(20, int(200 * (visible_lines / len(log))))
@@ -182,3 +259,7 @@ def draw_radar(screen, planes, font, messages, conflicts,
     else:
         screen.blit(font.render("Click a plane to view log", True, (180, 180, 180)),
                     (sidebar_x + 10, 10))
+
+    return {
+        "expand_icon": expand_icon
+    }

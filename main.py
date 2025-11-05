@@ -1,13 +1,12 @@
 from atc.objects.runway_v2 import all_runways
 from atc.objects.aircraft_v2 import spawn_random_plane
-from atc.radar import draw_radar, draw_performance_menu
+from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_log
 from atc.utils import check_conflicts, calculate_layout, get_current_version
 from atc.command_parser import CommandParser
+from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state
 from constants import WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE
 import pygame, sys, traceback, time
 from collections import defaultdict
-
-# v1.5.1
 
 parser = CommandParser()
 VERSION = get_current_version()
@@ -30,6 +29,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     print("A fatal error occurred — logged to error_log.txt")
 
 sys.excepthook = handle_exception
+
 
 def main():
     pygame.init()
@@ -57,6 +57,7 @@ def main():
 
     show_error_log = False
     show_perf = False
+    show_flight_log = False
 
     running = True
     while running:
@@ -77,92 +78,83 @@ def main():
         console_height = int(font_size * 2.2)
         bottom_y = HEIGHT - console_height + int(font_size * 0.5)
 
-        for event in pygame.event.get(): # event handling section
+        for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                close_all_windows()
                 running = False
+
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mx, my = event.pos
-
-                if event.button == 1: # leftclick
+                if show_flight_log:
+                    rects = draw_flight_progress_log(screen, font, planes, layout)
+                    expand_icon = rects.get("expand_icon") if rects else None
+                    
+                    if expand_icon  and expand_icon.collidepoint(event.pos):
+                        open_detached_window("Flight Progress Log", draw_flight_progress_log, planes, layout)
+                        show_flight_log = False
+                        continue
+                    
+                if event.button == 1:  # left click
                     for p in planes:
                         if (p.x - mx) ** 2 + (p.y - my) ** 2 < 10 ** 2:
                             selected_plane = p
                             active_cs = p.callsign
                             radio_scroll = 0
-                            input_str = f"{p.callsign} " # append selected aircraft cs to input
+                            input_str = f"{p.callsign} "
                             cursor_pos = len(input_str)
                             break
-                        else:
-                            selected_plane = None   # reset selected plane if
-                            active_cs = None        # mouse clicks off-plane
-                            input_str = ""
-                            cursor_pos = 0
+                    else:
+                        selected_plane = None
+                        active_cs = None
+                        input_str = ""
+                        cursor_pos = 0
                             
-                elif event.button == 4: # scroll down
+                elif event.button == 4:
                     radio_scroll = max(0, radio_scroll - 1)
-
-                elif event.button == 5: # scroll up
+                elif event.button == 5:
                     radio_scroll += 1
                     
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN: # send input command
+                if event.key == pygame.K_RETURN:
                     if input_str.strip():
                         results = parser.parse(input_str, planes)
                         messages.append("> " + input_str)
 
                         if isinstance(results, list):
-                            segments = [seg.strip() for seg in input_str.split("|") if seg.strip()] # parse command based on | position
+                            segments = [seg.strip() for seg in input_str.split("|") if seg.strip()]
                             for res in results:
                                 cs = res["callsign"]
                                 ctrl_msg = res["ctrl_msg"]
                                 ack_msg = res["ack_msg"]
 
                                 messages.append(ctrl_msg)
-
                                 if cs not in radio_log:
                                     radio_log[cs] = []
 
                                 cs_segment = next((seg for seg in segments if seg.startswith(cs)), input_str)
-
                                 radio_log[cs].append(f"CTRL: {cs_segment}")
                                 radio_log[cs].append(f"{cs}: {ack_msg}")
-                        else:
-                            ctrl_msg, ack_msg = results # legacy fallback for chained commands
-                            messages.append(ctrl_msg)
-                            parts = input_str.strip().upper().split()
-                            if parts:
-                                cs = parts[0]
-                                radio_log[cs].append(f"CTRL: {input_str}")
-                                radio_log[cs].append(f"{cs}: {ack_msg}")
-
                         input_str = ""
                         cursor_pos = 0
 
-                elif event.key == pygame.K_BACKSPACE: 
-                    if cursor_pos > 0:
-                        input_str = input_str[:cursor_pos - 1] + input_str[cursor_pos:]
-                        cursor_pos -= 1
-
-                elif event.key == pygame.K_DELETE: 
-                    if cursor_pos < len(input_str):
-                        input_str = input_str[:cursor_pos] + input_str[cursor_pos + 1:]
-
-                elif event.key == pygame.K_LEFT: 
+                elif event.key == pygame.K_BACKSPACE and cursor_pos > 0:
+                    input_str = input_str[:cursor_pos - 1] + input_str[cursor_pos:]
+                    cursor_pos -= 1
+                elif event.key == pygame.K_DELETE and cursor_pos < len(input_str):
+                    input_str = input_str[:cursor_pos] + input_str[cursor_pos + 1:]
+                elif event.key == pygame.K_LEFT:
                     cursor_pos = max(0, cursor_pos - 1)
-
-                elif event.key == pygame.K_RIGHT: 
+                elif event.key == pygame.K_RIGHT:
                     cursor_pos = min(len(input_str), cursor_pos + 1)
-
                 elif event.key == pygame.K_F3:
                     show_perf = not show_perf
-
+                elif event.key == pygame.K_F4:
+                    show_flight_log = not show_flight_log
                 elif event.key == pygame.K_F9:
                     show_error_log = not show_error_log
-
-                else:
-                    if event.unicode.isprintable():
-                        input_str = input_str[:cursor_pos] + event.unicode.upper() + input_str[cursor_pos:]
-                        cursor_pos += 1
+                elif event.unicode.isprintable():
+                    input_str = input_str[:cursor_pos] + event.unicode.upper() + input_str[cursor_pos:]
+                    cursor_pos += 1
 
         try:
             for plane in planes:
@@ -172,51 +164,63 @@ def main():
         
         conflicts = check_conflicts(planes)
 
-        draw_radar(screen, planes, font, messages, 
-                   conflicts, radio_log=radio_log, active_cs=active_cs, 
-                   selected_plane=selected_plane, radio_scroll=radio_scroll, 
-                   runways=runways)
+        live_data = [
+            {"callsign": p.callsign, "alt": p.alt, "spd": p.spd, "hdg": p.hdg, "state": p.state}
+            for p in planes
+        ]
+        update_shared_state("Flight Progress Log", live_data)
 
+        try:
+            draw_radar(screen, planes, font, messages,
+                    conflicts, radio_log=radio_log, active_cs=active_cs,
+                    selected_plane=selected_plane, radio_scroll=radio_scroll,
+                    runways=runways)
+        except pygame.error:
+            running = False
+            break
+
+        # Error log overlay
         if show_error_log and fatal_error:
             surf = pygame.Surface((WIDTH - 100, HEIGHT - 100), pygame.SRCALPHA)
             surf.fill((20, 0, 0, 220))
             y = 20
-
             lines = fatal_error.splitlines() if isinstance(fatal_error, str) else []
             for line in lines[-30:]:
                 txt = font.render(line, True, (255, 100, 100))
                 surf.blit(txt, (20, y))
                 y += 18
-                if y > HEIGHT - 150:
-                    break
-
             screen.blit(surf, (50, 50))
             header = font.render("FATAL ERROR — PRESS F9 TO HIDE", True, (255, 255, 0))
             screen.blit(header, (60, 60))
 
         if show_perf:
             draw_performance_menu(screen, font, clock, planes, runways, SIM_SPEED)
-            
+        if show_flight_log:
+            draw_flight_progress_log(screen, font, planes, layout)
+
+        # --- Console ---
         pygame.draw.rect(screen, (20, 20, 20), (0, HEIGHT - console_height, WIDTH, console_height))
-        
         prompt = "> " + input_str
         txt = font.render(prompt, True, (255, 255, 255))
         prompt_x = int(font_size * 0.5)
         screen.blit(txt, (prompt_x, bottom_y))
 
-        # --- Draw blinking cursor ---
+        # Cursor blink
         if cursor_visible:
-            # measure text width up to cursor position
             cursor_text = font.render("> " + input_str[:cursor_pos], True, (255, 255, 255))
             cursor_x = prompt_x + cursor_text.get_width()
             cursor_y = bottom_y
             pygame.draw.rect(screen, (255, 255, 255),
-                            (cursor_x, cursor_y - 2, 2, font.get_height()))
+                             (cursor_x, cursor_y - 2, 2, font.get_height()))
 
         pygame.display.flip()
 
     pygame.quit()
+    close_all_windows()
     sys.exit()
 
+
 if __name__ == "__main__":
+    import multiprocessing
+    multiprocessing.freeze_support()  # required on Windows when spawning
     main()
