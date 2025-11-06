@@ -108,4 +108,7 @@ Current - v1.6.3
         - Implement holding backspace to delete input
         - Auto switch log to last aircraft radio'ed
         - Add fatal error logging/handling
-        - Add performance
+        - Add performance logging
+
+    1.6.4 - Auto-versioning
+        - Implemented auto-versioning for the exe release file
