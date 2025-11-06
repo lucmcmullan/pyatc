@@ -32,7 +32,7 @@ def get_shared_state(key: str) -> Any:
 
 def open_detached_window(
     title: str,
-    draw_func: Callable[..., None],
+    draw_func: Callable[..., Any],
     *args: Any,
     **kwargs: Any
 ) -> None:
