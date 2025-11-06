@@ -1,0 +1,14 @@
+[2025-11-06 14:38:20]
+Traceback (most recent call last):
+  File "main.py", line 358, in <module>
+  File "main.py", line 309, in main
+UnboundLocalError: local variable 'event' referenced before assignment
+
+------------------------------------------------------------
+[2025-11-06 14:38:43]
+Traceback (most recent call last):
+  File "main.py", line 358, in <module>
+  File "main.py", line 309, in main
+UnboundLocalError: local variable 'event' referenced before assignment
+
+------------------------------------------------------------

@@ -305,10 +305,6 @@ def main():
             state["cursor_visible"] = not state["cursor_visible"]
             state["cursor_timer"] = 0
 
-        if state["show_update_modal"]:
-            if handle_update_modal_event(event, state):
-                continue
-
         layout = calculate_layout(WIDTH, HEIGHT)
         font = pygame.font.SysFont(DEFAULT_FONT, layout["FONT_SIZE"])
 
@@ -321,6 +317,10 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 handle_keyboard_input(event, state)
 
+            if state["show_update_modal"]:
+                if handle_update_modal_event(event, state):
+                    continue
+                
         update_simulation(state, dt)
 
         try:
