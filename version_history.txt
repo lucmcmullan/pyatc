@@ -123,7 +123,10 @@
     - AI decision-making intervals with configurable constants
     - AI-controlled aircraft deconflict automatically
 
-    2.0.1 - AI refinements
+    2.1.0 - AI refinements
         - Enhanced conflict detection using localised queries
         - Added AI command to toggle control between user and system
         - User-issued command overrides AI control
+
+        2.1.1 - UI refinements
+            - Added ui modals for quick updates
