@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 import pygame
@@ -19,16 +20,11 @@ from constants import (
     COLOUR_ERROR_BG, COLOUR_ERROR_HEADER, COLOUR_ERROR_TEXT
 )
 
+
 parser = CommandParser()
 VERSION = get_current_version()
 fatal_error = None
-
-has_update, remote_version = check_for_update(VERSION)
-if has_update and remote_version:
-    print(f"Update available: {remote_version} (local {VERSION})")
-    pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} — Update {remote_version}")
-else:
-    print("PyATC up-to-date!")
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     """Log uncaught exceptions and freeze the sim gracefully."""
@@ -182,8 +178,13 @@ def render_error_overlay(screen, font, error_text):
     screen.blit(font.render("FATAL ERROR — PRESS F9 TO HIDE", True, COLOUR_ERROR_HEADER), (60, 60))
 
 def main():
-    print("Welcome to PyATC! Type HELP for commands.")
-    print("Jimmy Billy Bob")
+    has_update, remote_version = check_for_update(VERSION)
+    if has_update and remote_version:
+        print(f"Update available: {remote_version} (local {VERSION})")
+        pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} — Update {remote_version}")
+    else:
+        print("PyATC up-to-date!")
+
     global fatal_error
 
     pygame.init()
