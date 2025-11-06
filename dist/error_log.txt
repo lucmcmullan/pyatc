@@ -12,3 +12,21 @@ Traceback (most recent call last):
 UnboundLocalError: local variable 'event' referenced before assignment
 
 ------------------------------------------------------------
+[2025-11-06 15:41:24]
+Traceback (most recent call last):
+  File "main.py", line 305, in <module>
+  File "main.py", line 259, in main
+  File "pygame\sysfont.py", line 460, in SysFont
+  File "pygame\sysfont.py", line 378, in font_constructor
+pygame.error: font not initialized
+
+------------------------------------------------------------
+[2025-11-06 15:43:53]
+Traceback (most recent call last):
+  File "main.py", line 305, in <module>
+  File "main.py", line 259, in main
+  File "pygame\sysfont.py", line 460, in SysFont
+  File "pygame\sysfont.py", line 378, in font_constructor
+pygame.error: font not initialized
+
+------------------------------------------------------------

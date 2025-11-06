@@ -11,7 +11,7 @@ from atc.ai.controller import AIController
 from atc.objects.runway_v2 import all_runways
 from atc.objects.aircraft_v2 import spawn_random_plane
 from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_log
-from atc.utils import check_conflicts, calculate_layout, get_current_version
+from atc.utils import check_conflicts, calculate_layout, get_current_version, ensure_pygame_ready
 from atc.command_parser import CommandParser
 from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state, show_modal
 from constants import (
@@ -25,6 +25,7 @@ from constants import (
     COLOUR_MODAL_TEXT, COLOUR_MODAL_SUB, COLOUR_BTN_BG,
     COLOUR_BTN_BG_HOVER
 )
+
 
 parser = CommandParser()
 VERSION = get_current_version()
@@ -192,6 +193,7 @@ def render_error_overlay(screen, font, error_text):
     screen.blit(font.render("FATAL ERROR — PRESS F9 TO HIDE", True, COLOUR_ERROR_HEADER), (60, 60))
 
 def main():
+    ensure_pygame_ready()
     global fatal_error
     
     ai = AIController()
@@ -256,6 +258,8 @@ def main():
             state["cursor_timer"] = 0
 
         layout = calculate_layout(WIDTH, HEIGHT)
+        if not pygame.font.get_init():
+            pygame.font.init()
         font = pygame.font.SysFont(DEFAULT_FONT, layout["FONT_SIZE"])
 
         for event in pygame.event.get():

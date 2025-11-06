@@ -1,0 +1,13 @@
+[2025-11-06 15:51:06]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 307, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 261, in main
+    font = pygame.font.SysFont(DEFAULT_FONT, layout["FONT_SIZE"])
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\site-packages\pygame\sysfont.py", line 460, in SysFont
+    return constructor(fontname, size, set_bold, set_italic)
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\site-packages\pygame\sysfont.py", line 378, in font_constructor
+    font = Font(fontpath, size)
+pygame.error: font not initialized
+
+------------------------------------------------------------

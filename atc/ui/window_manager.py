@@ -1,6 +1,6 @@
 import pygame
 import multiprocessing
-from utils import wrap_text
+from atc.utils import wrap_text, ensure_pygame_ready
 from multiprocessing.managers import SyncManager, DictProxy
 from multiprocessing.process import BaseProcess
 from typing import Any, Dict, Optional, Callable
@@ -14,17 +14,29 @@ def show_modal(title: str, message: str, font_name: str = "Consolas", font_size:
     Display a blocking modal dialog with a message and an OK button.
     The function halts execution until the user acknowledges it.
     """
-    pygame.init()
+    ensure_pygame_ready()
+    if not pygame.get_init():
+        pygame.init()
+    if not pygame.font.get_init():
+        pygame.font.init()
+
     screen = pygame.display.set_mode((480, 240))
     pygame.display.set_caption(title)
     clock = pygame.time.Clock()
+    
     font = pygame.font.SysFont(font_name, font_size)
 
-    COLOUR_MODAL_BG = (16, 16, 24, 230)
+    # --- Colours ---
     COLOUR_MODAL_CARD = (30, 30, 40)
     COLOUR_MODAL_TEXT = (255, 255, 255)
     COLOUR_BTN_BG = (70, 130, 180)
     COLOUR_BTN_BG_HOVER = (90, 150, 200)
+
+    # --- Button geometry (static) ---
+    btn_w, btn_h = 100, 40
+    btn_x = (480 - btn_w) // 2
+    btn_y = 180
+    btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
 
     running = True
     while running:
@@ -37,13 +49,14 @@ def show_modal(title: str, message: str, font_name: str = "Consolas", font_size:
                 if btn_rect.collidepoint(event.pos):
                     running = False
 
+        # --- Draw UI ---
         screen.fill(COLOUR_MODAL_CARD)
 
-        # Draw title
+        # Title
         title_text = font.render(title, True, COLOUR_MODAL_TEXT)
         screen.blit(title_text, (30, 30))
 
-        # Wrap message text
+        # Wrapped text
         wrapped = wrap_text(message, font, 420)
         y = 70
         for line in wrapped:
@@ -51,13 +64,9 @@ def show_modal(title: str, message: str, font_name: str = "Consolas", font_size:
             screen.blit(line_surface, (30, y))
             y += 25
 
-        # OK button
-        btn_w, btn_h = 100, 40
-        btn_x = (480 - btn_w) // 2
-        btn_y = 180
+        # Button
         mouse = pygame.mouse.get_pos()
-        hover = btn_x <= mouse[0] <= btn_x + btn_w and btn_y <= mouse[1] <= btn_y + btn_h
-        btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
+        hover = btn_rect.collidepoint(mouse)
         pygame.draw.rect(screen, COLOUR_BTN_BG_HOVER if hover else COLOUR_BTN_BG, btn_rect, border_radius=6)
 
         ok_text = font.render("OK", True, (255, 255, 255))
@@ -66,8 +75,8 @@ def show_modal(title: str, message: str, font_name: str = "Consolas", font_size:
         pygame.display.flip()
         clock.tick(60)
 
-    pygame.quit()
-    return
+    # --- Local-only cleanup ---
+    pygame.display.quit()
 
 def _ensure_manager() -> None:
     """Ensure a multiprocessing manager and shared dictionary exist."""
@@ -174,4 +183,4 @@ def _window_process(
             clock.tick(30)
 
     finally:
-        pygame.quit()
+        pygame.display.quit()

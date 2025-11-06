@@ -1,5 +1,12 @@
-import math, os, sys
+import math, os, sys, pygame
 from constants import *
+
+def ensure_pygame_ready():
+    """Safely initialize Pygame and its font subsystem if not active."""
+    if not pygame.get_init():
+        pygame.init()
+    if not pygame.font.get_init():
+        pygame.font.init()
 
 def get_current_version() -> str:
     """Return app version from version.txt (works both frozen and unfrozen)."""
