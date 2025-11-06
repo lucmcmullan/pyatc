@@ -35,6 +35,7 @@ class Aircraft:
     spd: float
     alt: float
     dest_alt: int
+    ai_controlled: bool = False
     dest_hdg: Optional[float] = None
     state: str = "AIRBORNE"
     turn_dir_forced: Optional[str] = None
@@ -54,7 +55,8 @@ class Aircraft:
     _alt_start_time: Optional[float] = dataclasses.field(init=False, default=None)
     _alt_duration: float = dataclasses.field(init=False, default=0.0)
     _alt_stabilise_start: Optional[float] = dataclasses.field(init=False, default=None)
-
+    _ai_next_decision: float = 0.0
+    
     def __post_init__(self):
         self._alt_start = self.alt
         self._alt_target = self.dest_alt

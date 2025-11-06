@@ -40,6 +40,7 @@ class CommandParser:
         results = []
 
         for seg in segments:
+            user_took_control = False
             parts = seg.upper().split()
             if not parts:
                 continue
@@ -56,6 +57,11 @@ class CommandParser:
                 continue
 
             cmds, ack_segments = self._parse_segment(parts[1:], aircraft)
+            
+            if cmds:
+                aircraft.ai_controlled = False
+                user_took_control = True
+                
             ctrl_msg, ack_msg = self._build_responses(callsign, cmds, ack_segments)
 
             if cmds:
@@ -71,8 +77,7 @@ class CommandParser:
 
     def _parse_segment(self, tokens, aircraft):
         """Interpret a single command segment for one aircraft."""
-        cmds = []
-        ack_segments = []
+        cmds, ack_segments = [], []
         i = 0
 
         while i < len(tokens):
@@ -128,6 +133,22 @@ class CommandParser:
                 ack_segments.append(ack)
                 cmds.extend(new_cmds)
                 i += skip
+
+            elif token == "AI":
+                mode = None
+                if i + 1 < len(tokens):
+                    nxt = tokens[i + 1]
+                    if nxt in ("ON", "OFF", "1", ):
+                        mode = nxt
+                        i += 1
+                if mode is None:
+                    aircraft.ai_controlled = not getattr(aircraft, "ai_controlled", False)
+                else:
+                    aircraft.ai_controlled = (mode in ("ON", "1"))
+                
+                ack_segments.append(f"AI {'enabled' if aircraft.ai_controlled else 'disabled'}")
+                i += 1
+                continue
 
             i += 1
 

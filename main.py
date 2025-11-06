@@ -6,6 +6,7 @@ import traceback
 from collections import defaultdict
 
 from update_checker import check_for_update
+from atc.ai.controller import AIController
 from atc.objects.runway_v2 import all_runways
 from atc.objects.aircraft_v2 import spawn_random_plane
 from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_log
@@ -17,9 +18,9 @@ from constants import (
     INITIAL_PLANE_COUNT, DEFAULT_FONT, CURSOR_BLINK_SPEED,
     NAME_MAIN_WINDOW, NAME_FLIGHT_LOG,
     COLOUR_BG, COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT,
-    COLOUR_ERROR_BG, COLOUR_ERROR_HEADER, COLOUR_ERROR_TEXT
+    COLOUR_ERROR_BG, COLOUR_ERROR_HEADER, COLOUR_ERROR_TEXT,
+    AI_TRAFFIC, AI_SPAWN_INTERVAL_S, INITIAL_PLANE_COUNT
 )
-
 
 parser = CommandParser()
 VERSION = get_current_version()
@@ -47,10 +48,6 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
 sys.excepthook = handle_exception
 
-
-# ==========================================
-# 🧩 Helper Functions
-# ==========================================
 def handle_keyboard_input(event, state):
     """Process all keyboard input events."""
     key = event.key
@@ -186,12 +183,16 @@ def main():
         print("PyATC up-to-date!")
 
     global fatal_error
-
+    
+    ai = AIController()
+    ai_enabled = AI_TRAFFIC
+    ai_spawn_timer = 0.0
+    
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION}")
     clock = pygame.time.Clock()
-    # --- Simulation + UI State ---
+
     state = {
         "planes": [spawn_random_plane(i) for i in range(1, INITIAL_PLANE_COUNT + 1)],
         "runways": all_runways(),
@@ -213,6 +214,16 @@ def main():
     running = True
     while running:
         dt = 0 if fatal_error else (clock.tick(FPS) / 1000.0) * SIM_SPEED
+        
+        if ai_enabled:
+            ai_spawn_timer += dt
+            if ai_spawn_timer >= AI_SPAWN_INTERVAL_S:
+                ai_spawn_timer = 0.0
+                p = spawn_random_plane(len(state["planes"]) + 1)
+                p.ai_controlled = True
+                state["planes"].append(p)
+            
+            ai.update(state["planes"], state["runways"], dt)
 
         # Cursor blink timing
         state["cursor_timer"] += dt
