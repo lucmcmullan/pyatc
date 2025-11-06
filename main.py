@@ -179,11 +179,8 @@ def render_error_overlay(screen, font, error_text):
     screen.blit(surf, (50, 50))
     screen.blit(font.render("FATAL ERROR — PRESS F9 TO HIDE", True, COLOUR_ERROR_HEADER), (60, 60))
 
-
-# ==========================================
-# 🚀 Main Simulation Loop
-# ==========================================
 def main():
+    print("Welcome to PyATC! Type HELP for commands.")
     global fatal_error
 
     pygame.init()
