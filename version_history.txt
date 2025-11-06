@@ -1,114 +1,129 @@
-Versions - PyATC
-
-Current - v1.6.3
-
 1.0.0 - Initial release
+    - Basic radar rendering
+    - Aircraft spawn and manual control
+    - Console input for simple commands
 
-1.1.0 - Radio logging
-    - Aircraft-specific logging
-    - Controller <-> pilot history
-    - Sidebar for comms display
+    1.1.0 - Radio logging
+        - Aircraft-specific logging
+        - Controller <-> pilot history
+        - Sidebar for comms display
 
-    1.1.1 - Bug fixes
-        - Fixed log not updating when aircraft selected
-        - Empty log causing crashes fix
-        - Improved message queue handling
+        1.1.1 - Bug fixes
+            - Fixed log not updating when aircraft selected
+            - Empty log causing crashes fix
+            - Improved message queue handling
 
-    1.1.2 - UI interaction improvements
-        - Clicking the plane blip adds the callsign to the input console
-        - Clicking off-planes causes the input and radio log to reset
-        
-1.2.0 - Proper typing, command parsing, chaining & flight control
-    - Implemented command parser with chaining
-    - Flight control logic for heading, speed and altitude
-    - Planes respond to parsed instructions sequence
+        1.1.2 - UI interaction improvements
+            - Clicking the plane blip adds the callsign to the input console
+            - Clicking off-planes causes the input and radio log to reset
 
-    1.2.1 - Minor improvement
-        - Heading updates not updating until next command fix
-        - Queued command confirmation feedback (removed temporarily)
-        - Improved altitude command recognition
+    1.2.0 - Proper typing, command parsing, chaining & flight control
+        - Implemented command parser with chaining
+        - Flight control logic for heading, speed and altitude
+        - Planes respond to parsed instruction sequences
 
-    1.2.2 - Stability patch
-        - Prevent invalid aircraft IDs causing parser crashes
-        - Smooth transition between consecutive altitude commands
+        1.2.1 - Minor improvement
+            - Heading updates not updating until next command fix
+            - Queued command confirmation feedback (temporarily removed)
+            - Improved altitude command recognition
 
-    1.2.3 - Further chains
-        - Added chaining for aircraft-aircraft as well as individual command strings
+        1.2.2 - Stability patch
+            - Prevent invalid aircraft IDs causing parser crashes
+            - Smooth transition between consecutive altitude commands
 
-1.3.0 - Phraseology, realistic communication
-    - Added realistic ATC phraseology for acknowledgements
-    - Improved altitude callouts
-    - Callsigns appear at the END of transmissions as-per ICAO R/T standards
-    - Added support for EX responses
-    
-    1.3.1 - Parse refinements - EX fixes
-        - Fixed EX not complying with chained messages
-        - Enhanced phrasing for multi-command responses
-    
-    1.3.2 - Multi aircraft command targeting
-        - Aircraft specific targeting and logging
-        - Each plane displays its relevant ack in the log
-        - Cleaner controller-side feedback
-        
-1.4.0 - Responsive layout, text wrapping
-    - Dynamic layout scaling, WIDTH/HEIGHT-aware calculator
-    - Sidebar and radar sizes adjust to screen resolution
-    - Added text wrapping for logs and messages
+        1.2.3 - Further chains
+            - Added chaining for multi-aircraft command sequences
 
-    1.4.1 - UI polishing - resolutions
-        - Fixed clipped text for small resolutions
-        - Adjusted scroll behaviour and visual spacing in logs
+    1.3.0 - Phraseology, realistic communication
+        - Added realistic ATC phraseology for acknowledgements
+        - Improved altitude callouts
+        - Callsigns appear at the END of transmissions per ICAO R/T standards
+        - Added support for EX (expedite) responses
 
-    1.4.2 - Standardised capitalisation
-        - Capitalise input in the console
-        - Capitalise acknowledgement in radio log
+        1.3.1 - Parse refinements - EX fixes
+            - Fixed EX not complying with chained messages
+            - Enhanced phrasing for multi-command responses
 
-    1.4.3 - Scalable UI overhaul
-        - All rendering scales through calculate_layout()
-        - Console and text sizes dynamically adjusted
-    
-    1.4.4 - Scale fixes and spawn positions
-        - VOR load from constants and scaled to layout
-        - Aicraft spawn proportionally to screen scale
+        1.3.2 - Multi-aircraft command targeting
+            - Each plane logs its relevant acknowledgement
+            - Cleaner controller-side feedback
 
-1.5.0 - Realistic altitude dynamics (sinusoidal)
-    - Implemented sinusoidal ascent/descent transitions
-    - Added dampening oscillations to simulate stabilisation
-    - Introduced configurable climb-rate curve for acceleration
+    1.4.0 - Responsive layout, text wrapping
+        - Dynamic layout scaling (WIDTH/HEIGHT-aware calculator)
+        - Sidebar and radar sizes adapt to resolution
+        - Added text wrapping for logs and messages
 
-    1.5.1 - Altitude dynamic refinements
-        - Fixed initial climb spike
-        - Added curve flattening for climb realism
-        - Corrected overshoot during rapid changes
-        - EX doubles rate while retaining smooth motion
+        1.4.1 - UI polishing
+            - Fixed clipped text for small resolutions
+            - Adjusted scroll behaviour and visual spacing
 
-    1.5.2 - Stability
-        - Fixed zero-division in altitude interpolation
-        - Prevent negative heading generating for southbound aircraft
-        - Added heading normalisation and range enforcement
+        1.4.2 - Standardised capitalisation
+            - Console input and acknowledgements capitalised
 
-1.6.0 - Runways
-    - Added runway singletons with bearings
-    - Added takeoff and land commands
-    - Runway occupancy + availability checks
+        1.4.3 - Scalable UI overhaul
+            - All rendering scaled through calculate_layout()
+            - Console and text sizes dynamically adjusted
 
-    1.6.1 - Bug fixes
-        - Centralised runway registry shared across all objects
-        - Fixed heading and distance calculations for VORs
-        - Aircraft is aware of its runway
-        - Automatic runway release after takeoff
+        1.4.4 - Scale fixes and spawn positions
+            - VORs loaded from constants and scaled to layout
+            - Aircraft spawn positions scale proportionally
 
-    1.6.2 - Airlines
-        - Added airline implementation for callsigns
-        - Aircraft responses use proper callsigns (i.e. Speedbird)
-        - Realigned aircraft tag information
+    1.5.0 - Realistic altitude dynamics (sinusoidal)
+        - Implemented sinusoidal ascent/descent transitions
+        - Added dampening oscillations for stabilisation
+        - Introduced configurable climb-rate curve for acceleration
 
-    1.6.3 - UI adjustments
-        - Added text input blip in console
-        - Implement holding backspace to delete input
-        - Auto switch log to last aircraft radio'ed
-        - Add fatal error logging/handling
-        - Add performance logging
+        1.5.1 - Altitude dynamic refinements
+            - Fixed initial climb spike
+            - Added curve flattening for realism
+            - Corrected overshoot during rapid changes
+            - EX doubles climb rate while retaining smooth motion
 
-    1.6.4 - Auto-versioning
-        - Implemented auto-versioning for the exe release file
+        1.5.2 - Stability improvements
+            - Fixed zero-division in altitude interpolation
+            - Prevent negative heading generation for southbound aircraft
+            - Added heading normalisation enforcement
+
+    1.6.0 - Runways
+        - Added runway singletons with bearings
+        - Added takeoff and land commands
+        - Runway occupancy + availability checks
+
+        1.6.1 - Bug fixes
+            - Centralised runway registry shared across objects
+            - Fixed heading and distance calculations for VORs
+            - Aircraft aware of current runway
+            - Automatic runway release after takeoff
+
+        1.6.2 - Airlines
+            - Added airline callouts (Speedbird, Easy, Logan, etc.)
+            - Aircraft use correct callsigns
+            - Realigned aircraft tag information
+
+        1.6.3 - UI adjustments
+            - Added text input blip in console
+            - Implemented backspace hold for continuous delete
+            - Auto-switch log to last contacted aircraft
+            - Added fatal error logging & handling
+            - Added performance overlay (F3) with system metrics
+            - Added detached windows for modular displays (F4, etc.)
+            - Improved multiprocessing and state synchronisation
+
+        1.6.4 - Auto-versioning
+            - Implemented auto-versioning for EXE builds
+            - Added GitHub version comparison on startup
+            - Displays "Update available" in window title when out of sync
+            - Added version.txt lookup for frozen and non-frozen builds
+            - Improved update checker reliability and file parsing
+
+2.0.0 - AI Traffic & Systems
+    - Introduced AI-controlled aircraft with autonomous behaviour
+    - AI can take off, land, and navigate via VOR fixes
+    - Added Quadtree-based spatial management for performance
+    - AI decision-making intervals with configurable constants
+    - AI-controlled aircraft deconflict automatically
+
+    2.0.1 - AI refinements
+        - Enhanced conflict detection using localised queries
+        - Added AI command to toggle control between user and system
+        - User-issued command overrides AI control

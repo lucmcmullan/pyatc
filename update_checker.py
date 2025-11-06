@@ -1,6 +1,5 @@
 import requests
-
-GH_API = "https://raw.githubusercontent.com/lucmcmullan/pyatc/refs/heads/main/version.txt"
+from constants import GH_API
 
 def fetch_remote_version() -> str | None:
     """Get the current version string from the Versions file on GitHub."""
