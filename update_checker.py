@@ -7,23 +7,21 @@ def fetch_remote_version() -> str | None:
     try:
         response = requests.get(GH_API, timeout=5)
         response.raise_for_status()
-        text = response.text
-
-        # Look for a line like: Current - v1.6.3
-        match = re.search(r"Current\s*-\s*v?([\d.]+)", text)
-        if match:
-            return f"v{match.group(1)}"
+        version = response.text.strip()
+        if version.lower().startswith("v"):
+            return version
+        
     except Exception:
         pass
     return None
 
 
 def check_for_update(local_version: str) -> tuple[bool, str | None]:
-    """Compare the local version to the remote one."""
-    remote = fetch_remote_version()
-    if not remote:
+    remote_version = fetch_remote_version()
+    if not remote_version:
         return False, None
 
-    local_clean = local_version.lstrip("v")
-    remote_clean = remote.lstrip("v")
-    return (remote_clean != local_clean, remote)
+    local_clean = local_version.lstrip("v").strip()
+    remote_clean = remote_version.lstrip("v").strip()
+
+    return (remote_clean != local_clean, remote_version)

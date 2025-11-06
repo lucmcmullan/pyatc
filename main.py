@@ -19,16 +19,15 @@ from constants import (
     COLOUR_ERROR_BG, COLOUR_ERROR_HEADER, COLOUR_ERROR_TEXT
 )
 
-
-# === Global setup ===
 parser = CommandParser()
 VERSION = get_current_version()
 fatal_error = None
 
+has_update, remote_version = check_for_update(VERSION)
+if has_update and remote_version:
+    print(f"Update available: {remote_version} (local {VERSION})")
+    pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} — Update {remote_version}")
 
-# ==========================================
-# 💥 Error Handling
-# ==========================================
 def handle_exception(exc_type, exc_value, exc_traceback):
     """Log uncaught exceptions and freeze the sim gracefully."""
     global fatal_error
@@ -191,13 +190,6 @@ def main():
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION}")
     clock = pygame.time.Clock()
-
-    has_update, remote_ver = check_for_update(VERSION)
-    if has_update:
-        print(f"A newer version ({remote_ver}) is available for update.")
-
-        pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} - Update {remote_ver} available")
-
     # --- Simulation + UI State ---
     state = {
         "planes": [spawn_random_plane(i) for i in range(1, INITIAL_PLANE_COUNT + 1)],
