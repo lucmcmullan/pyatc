@@ -4,12 +4,13 @@ import pygame
 import traceback
 from collections import defaultdict
 
+from update_checker import check_for_update
 from atc.objects.runway_v2 import all_runways
 from atc.objects.aircraft_v2 import spawn_random_plane
 from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_log
 from atc.utils import check_conflicts, calculate_layout, get_current_version
 from atc.command_parser import CommandParser
-from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state
+from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state 
 from constants import (
     WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE,
     INITIAL_PLANE_COUNT, DEFAULT_FONT, CURSOR_BLINK_SPEED,
@@ -17,6 +18,7 @@ from constants import (
     COLOUR_BG, COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT,
     COLOUR_ERROR_BG, COLOUR_ERROR_HEADER, COLOUR_ERROR_TEXT
 )
+
 
 # === Global setup ===
 parser = CommandParser()
@@ -189,6 +191,12 @@ def main():
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION}")
     clock = pygame.time.Clock()
+
+    has_update, remote_ver = check_for_update(VERSION)
+    if has_update:
+        print(f"A newer version ({remote_ver}) is available for update.")
+
+        pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} - Update {remote_ver} available")
 
     # --- Simulation + UI State ---
     state = {

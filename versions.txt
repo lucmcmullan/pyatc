@@ -1,6 +1,6 @@
 Versions - PyATC
 
-Current - v1.6.3
+Current - v1.6.4
 
 1.0.0 - Initial release
 
@@ -108,4 +108,4 @@ Current - v1.6.3
         - Implement holding backspace to delete input
         - Auto switch log to last aircraft radio'ed
         - Add fatal error logging/handling
-        - Add performance logs
+        - Add performance
