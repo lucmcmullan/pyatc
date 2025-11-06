@@ -175,13 +175,6 @@ def render_error_overlay(screen, font, error_text):
     screen.blit(font.render("FATAL ERROR — PRESS F9 TO HIDE", True, COLOUR_ERROR_HEADER), (60, 60))
 
 def main():
-    has_update, remote_version = check_for_update(VERSION)
-    if has_update and remote_version:
-        print(f"Update available: {remote_version} (local {VERSION})")
-        pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} — Update {remote_version}")
-    else:
-        print("PyATC up-to-date!")
-
     global fatal_error
     
     ai = AIController()
@@ -189,9 +182,18 @@ def main():
     ai_spawn_timer = 0.0
     
     pygame.init()
+    has_update, remote_version = check_for_update(VERSION)
+    if has_update and remote_version:
+        print(f"Update available: {remote_version} (local {VERSION})")
+        pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} - Update EXE to {remote_version}")
+    else:
+        print("PyATC up-to-date!")
+        pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION}")
+
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION}")
     clock = pygame.time.Clock()
+
+
 
     state = {
         "planes": [spawn_random_plane(i) for i in range(1, INITIAL_PLANE_COUNT + 1)],

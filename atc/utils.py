@@ -1,18 +1,26 @@
-import math
+import math, os, sys
 from constants import *
 
 def get_current_version() -> str:
+    """Return app version from version.txt (works both frozen and unfrozen)."""
     try:
-        with open("version.txt", "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        
-        line = lines[0].strip()
-        if line.lower().startswith("v"):
-            return line
-    except Exception as e:
-        pass
+        if getattr(sys, 'frozen', False):
+            # Running as a PyInstaller EXE
+            base_path = sys._MEIPASS
+        else:
+            # Running from source — use project root, not this file's folder
+            base_path = os.path.dirname(os.path.abspath(sys.argv[0]))
 
-    return "v0.0.0"
+        version_path = os.path.join(base_path, "version.txt")
+
+        if not os.path.exists(version_path):
+            # Fallback to project root (in case running from submodule)
+            version_path = os.path.join(os.path.dirname(base_path), "version.txt")
+
+        with open(version_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception:
+        return "v0.0.0"
 
 def load_runways(): return RUNWAYS
 def nm_to_px(nm): return nm/NM_PER_PX
