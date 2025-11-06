@@ -13,7 +13,7 @@ from atc.objects.aircraft_v2 import spawn_random_plane
 from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_log
 from atc.utils import check_conflicts, calculate_layout, get_current_version
 from atc.command_parser import CommandParser
-from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state 
+from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state, show_modal
 from constants import (
     WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE,
     INITIAL_PLANE_COUNT, DEFAULT_FONT, CURSOR_BLINK_SPEED,
@@ -111,55 +111,6 @@ def handle_update_modal_event(event: pygame.event.Event, state: dict):
     return False
 
 
-def render_update_modal(screen: pygame.Surface, font: pygame.font.Font, state: dict,
-                        width: int, height: int):
-    """Draw a centered modal with an OK button. Updates state['modal_ok_rect'] for clicks."""
-
-    # Dimmed backdrop
-    overlay = pygame.Surface((width, height), pygame.SRCALPHA)
-    overlay.fill(COLOUR_MODAL_BG)
-    screen.blit(overlay, (0, 0))
-
-    # Centered card
-    card = pygame.Surface((MODAL_WIDTH, MODAL_HEIGHT), pygame.SRCALPHA)
-    card.fill(COLOUR_MODAL_CARD)
-    cx = (width - MODAL_WIDTH) // 2
-    cy = (height - MODAL_HEIGHT) // 2
-    screen.blit(card, (cx, cy))
-
-    # Text
-    title = "Update Available"
-    info = state.get("update_info") or {}
-    remote = info.get("remote", "?")
-    local = info.get("local", "?")
-    line1 = f"A newer version is available: {remote}"
-    line2 = f"You're running: {local}"
-
-    t1 = font.render(title, True, COLOUR_MODAL_TEXT)
-    t2 = font.render(line1, True, COLOUR_MODAL_SUB)
-    t3 = font.render(line2, True, COLOUR_MODAL_SUB)
-
-    screen.blit(t1, (cx + 20, cy + 20))
-    screen.blit(t2, (cx + 20, cy + 70))
-    screen.blit(t3, (cx + 20, cy + 100))
-
-    # OK button
-    btn_w, btn_h = 120, 40
-    btn_x = cx + MODAL_WIDTH - btn_w - 20
-    btn_y = cy + MODAL_HEIGHT - btn_h - 20
-    mouse_pos = pygame.mouse.get_pos()
-    hover = (btn_x <= mouse_pos[0] <= btn_x + btn_w) and (btn_y <= mouse_pos[1] <= btn_y + btn_h)
-
-    btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
-    pygame.draw.rect(screen, COLOUR_BTN_BG_HOVER if hover else COLOUR_BTN_BG, btn_rect, border_radius=6)
-    btn_label = font.render("OK", True, COLOUR_BTN_TEXT)
-    blx = btn_x + (btn_w - btn_label.get_width()) // 2
-    bly = btn_y + (btn_h - btn_label.get_height()) // 2
-    screen.blit(btn_label, (blx, bly))
-
-    # expose for click handling
-    state["modal_ok_rect"] = btn_rect
-
 def handle_mouse_input(event, state, layout, screen, font):
     """Process all mouse input events."""
     mx, my = event.pos
@@ -254,6 +205,7 @@ def main():
         print(f"Update available: {remote_version} (local {VERSION})")
         pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} - Update EXE to {remote_version}")
         update_info = { "remote": remote_version, "local": VERSION }
+        show_modal("Update Available", f"A new version ({remote_version}) is available.\nLet a developer know to update this machine.")
     else:
         print("PyATC up-to-date!")
         pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION}")
@@ -261,8 +213,6 @@ def main():
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
-
-
 
     state = {
         "planes": [spawn_random_plane(i) for i in range(1, INITIAL_PLANE_COUNT + 1)],
@@ -342,9 +292,6 @@ def main():
 
         render_console(screen, font, state, layout)
 
-        if state["show_update_modal"]:
-            render_update_modal(screen, font, state, WIDTH, HEIGHT)
-            
         pygame.display.flip()
 
     pygame.quit()
