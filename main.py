@@ -181,6 +181,7 @@ def render_error_overlay(screen, font, error_text):
 
 def main():
     print("Welcome to PyATC! Type HELP for commands.")
+    print("Jimmy Billy Bob")
     global fatal_error
 
     pygame.init()
