@@ -10,8 +10,13 @@ from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_lo
 from atc.utils import check_conflicts, calculate_layout, get_current_version
 from atc.command_parser import CommandParser
 from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state
-from constants import WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE
-
+from constants import (
+    WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE,
+    INITIAL_PLANE_COUNT, DEFAULT_FONT, CURSOR_BLINK_SPEED,
+    NAME_MAIN_WINDOW, NAME_FLIGHT_LOG,
+    COLOUR_BG, COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT,
+    COLOUR_ERROR_BG, COLOUR_ERROR_HEADER, COLOUR_ERROR_TEXT
+)
 
 # === Global setup ===
 parser = CommandParser()
@@ -32,7 +37,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     error_text = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
-    entry = f"[{timestamp}]\n{error_text}\n{'-'*60}\n"
+    entry = f"[{timestamp}]\n{error_text}\n{'-' * 60}\n"
 
     with open(ERROR_LOG_FILE, "a", encoding="utf-8") as f:
         f.write(entry)
@@ -102,7 +107,7 @@ def handle_mouse_input(event, state, layout, screen, font):
         rects = draw_flight_progress_log(screen, font, state["planes"], layout)
         expand_icon = rects.get("expand_icon") if rects else None
         if expand_icon and expand_icon.collidepoint(event.pos):
-            open_detached_window("Flight Progress Log", draw_flight_progress_log, state["planes"], layout)
+            open_detached_window(NAME_FLIGHT_LOG, draw_flight_progress_log, state["planes"], layout)
             state["show_flight_log"] = False
             return
 
@@ -152,44 +157,42 @@ def render_console(screen, font, state, layout):
     bottom_y = HEIGHT - console_height + int(layout["FONT_SIZE"] * 0.5)
     prompt_x = int(layout["FONT_SIZE"] * 0.5)
 
-    pygame.draw.rect(screen, (20, 20, 20), (0, HEIGHT - console_height, WIDTH, console_height))
-    txt = font.render(f"> {state['input_str']}", True, (255, 255, 255))
+    pygame.draw.rect(screen, COLOUR_CONSOLE_BG, (0, HEIGHT - console_height, WIDTH, console_height))
+    txt = font.render(f"> {state['input_str']}", True, COLOUR_CONSOLE_TEXT)
     screen.blit(txt, (prompt_x, bottom_y))
 
-    # Cursor blink
     if state["cursor_visible"]:
-        cursor_width = font.render(f"> {state['input_str'][:state['cursor_pos']]}", True, (255, 255, 255)).get_width()
-        pygame.draw.rect(screen, (255, 255, 255),
+        cursor_width = font.render(f"> {state['input_str'][:state['cursor_pos']]}", True, COLOUR_CONSOLE_TEXT).get_width()
+        pygame.draw.rect(screen, COLOUR_CONSOLE_TEXT,
                          (prompt_x + cursor_width, bottom_y - 2, 2, font.get_height()))
 
 
 def render_error_overlay(screen, font, error_text):
     """Display fatal error log overlay."""
     surf = pygame.Surface((WIDTH - 100, HEIGHT - 100), pygame.SRCALPHA)
-    surf.fill((20, 0, 0, 220))
+    surf.fill(COLOUR_ERROR_BG)
     y = 20
     for line in str(error_text).splitlines()[-30:]:
-        surf.blit(font.render(line, True, (255, 100, 100)), (20, y))
+        surf.blit(font.render(line, True, COLOUR_ERROR_TEXT), (20, y))
         y += 18
     screen.blit(surf, (50, 50))
-    screen.blit(font.render("FATAL ERROR — PRESS F9 TO HIDE", True, (255, 255, 0)), (60, 60))
+    screen.blit(font.render("FATAL ERROR — PRESS F9 TO HIDE", True, COLOUR_ERROR_HEADER), (60, 60))
 
 
 # ==========================================
-# 🎮 Main Simulation Loop
+# 🚀 Main Simulation Loop
 # ==========================================
 def main():
     global fatal_error
 
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption(f"PyATC {VERSION}")
-
+    pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION}")
     clock = pygame.time.Clock()
 
     # --- Simulation + UI State ---
     state = {
-        "planes": [spawn_random_plane(i) for i in range(1, 6)],
+        "planes": [spawn_random_plane(i) for i in range(1, INITIAL_PLANE_COUNT + 1)],
         "runways": all_runways(),
         "radio_log": defaultdict(list),
         "messages": [],
@@ -210,14 +213,14 @@ def main():
     while running:
         dt = 0 if fatal_error else (clock.tick(FPS) / 1000.0) * SIM_SPEED
 
-        #  blink
+        # Cursor blink timing
         state["cursor_timer"] += dt
-        if state["cursor_timer"] >= 2:
+        if state["cursor_timer"] >= CURSOR_BLINK_SPEED:
             state["cursor_visible"] = not state["cursor_visible"]
             state["cursor_timer"] = 0
 
         layout = calculate_layout(WIDTH, HEIGHT)
-        font = pygame.font.SysFont("Consolas", layout["FONT_SIZE"])
+        font = pygame.font.SysFont(DEFAULT_FONT, layout["FONT_SIZE"])
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -254,7 +257,8 @@ def main():
     close_all_windows()
     sys.exit()
 
+
 if __name__ == "__main__":
     import multiprocessing
-    multiprocessing.freeze_support()  # required for Windows
+    multiprocessing.freeze_support()  # required on Windows
     main()

@@ -1,11 +1,32 @@
 from atc.objects.command import Command
 from atc.objects.runway_v2 import get_runway
 from atc.utils import convert_to_phraseology, get_callsign_from_iata
-from constants import LANDING_HEADING_OFFSET_DEG, LANDING_HEIGHT_OFFSET_FT
+from constants import (
+    LANDING_HEADING_OFFSET_DEG,
+    LANDING_HEIGHT_OFFSET_FT,
+    CMD_TURN_TOKENS,
+    CMD_TAKEOFF_PARAMS_REQUIRED,
+    ALTITUDE_STEP_FT,
+    MSG_NO_COMMAND,
+    MSG_NO_INPUT,
+    MSG_INVALID_TAKEOFF,
+    MSG_RUNWAY_NOT_FOUND,
+    MSG_RUNWAY_OCCUPIED,
+    MSG_NOT_ALIGNED,
+    MSG_TOO_HIGH,
+    MSG_LAND_CLEARANCE,
+    MSG_TAKEOFF_CLEARANCE,
+    MSG_HOLD_POS,
+    MSG_HOLD_FIX,
+    MSG_TAKEOFF_MISSING_PARAMS,
+    MSG_LANDING_MISSING_RUNWAY,
+)
+
 
 def _angle_diff(a: float, b: float) -> float:
     """Return the smallest angular difference between two headings."""
     return min((a - b) % 360, (b - a) % 360)
+
 
 class CommandParser:
     """Handles parsing and processing of ATC-style commands."""
@@ -13,7 +34,7 @@ class CommandParser:
     def parse(self, text: str, planes):
         """Parse controller input string into executable aircraft commands."""
         if not text.strip():
-            return [{"callsign": "", "ctrl_msg": "NO COMMAND", "ack_msg": "No input provided."}]
+            return [{"callsign": "", "ctrl_msg": MSG_NO_COMMAND, "ack_msg": MSG_NO_INPUT}]
 
         segments = [seg.strip() for seg in text.split("|") if seg.strip()]
         results = []
@@ -57,49 +78,52 @@ class CommandParser:
         while i < len(tokens):
             token = tokens[i]
 
-            if token == "C":
+            if token == "C":  # Control
                 i += 1
                 if i >= len(tokens):
                     break
                 arg = tokens[i]
-                extra = tokens[i + 1] if i + 1 < len(tokens) and tokens[i + 1] in ("L", "R", "X", "EX") else None
+                extra = tokens[i + 1] if i + 1 < len(tokens) and tokens[i + 1] in CMD_TURN_TOKENS else None
                 if extra:
                     i += 1
 
+                # Heading
                 if arg.isdigit() and len(arg) == 3:
                     cmds.append(Command("HDG", arg, extra))
                     turn = "left " if extra == "L" else "right " if extra == "R" else ""
                     ack_segments.append(f"turn {turn}heading {convert_to_phraseology(int(arg), 'heading')}")
 
+                # Altitude
                 elif arg.isdigit():
                     cmds, ack = self._handle_altitude_command(aircraft, arg, extra)
                     ack_segments.append(ack)
 
+                # Navigation fix
                 else:
                     cmds.append(Command("NAV", arg, extra))
                     ack_segments.append(f"cleared direct {arg}")
 
-            elif token == "S":
+            elif token == "S":  # Speed
                 if i + 1 < len(tokens):
                     spd = tokens[i + 1]
                     cmds.append(Command("SPD", spd))
                     ack_segments.append(f"speed {convert_to_phraseology(int(spd), 'speed')}")
                     i += 1
 
-            elif token == "H":
+            elif token == "H":  # Hold
                 fix = tokens[i + 1] if i + 1 < len(tokens) else None
                 cmds.append(Command("HOLD", fix))
-                ack_segments.append(f"hold at {fix}" if fix else "hold position")
+                ack_segments.append(MSG_HOLD_FIX.format(fix=fix) if fix else MSG_HOLD_POS)
                 if fix:
                     i += 1
 
-            elif token == "T":
+            elif token == "T":  # Takeoff
                 ack, new_cmds, skip = self._handle_takeoff(tokens, i, aircraft)
                 ack_segments.append(ack)
                 cmds.extend(new_cmds)
                 i += skip
 
-            elif token == "L":
+            elif token == "L":  # Land
                 ack, new_cmds, skip = self._handle_landing(tokens, i, aircraft)
                 ack_segments.append(ack)
                 cmds.extend(new_cmds)
@@ -111,7 +135,7 @@ class CommandParser:
 
     def _handle_altitude_command(self, aircraft, arg, extra):
         """Process climb/descend commands."""
-        target_alt = int(arg) * 1000
+        target_alt = int(arg) * ALTITUDE_STEP_FT
         cmd = Command("ALT", arg, extra)
         ex = " expedite" if extra in ("X", "EX") else ""
 
@@ -134,48 +158,44 @@ class CommandParser:
 
         return [cmd], ack
 
-
     def _handle_takeoff(self, tokens, i, aircraft):
         """Handle takeoff clearances."""
-        if i + 3 >= len(tokens):
-            return "takeoff clearance missing parameters", [], 0
+        if i + CMD_TAKEOFF_PARAMS_REQUIRED >= len(tokens):
+            return MSG_TAKEOFF_MISSING_PARAMS, [], 0
 
         runway_name, spd, alt = tokens[i + 1:i + 4]
         if not spd.isdigit() or not alt.isdigit():
-            return "unable, invalid takeoff parameters", [], 3
+            return MSG_INVALID_TAKEOFF, [], CMD_TAKEOFF_PARAMS_REQUIRED
 
         runway = get_runway(runway_name)
         if not runway:
-            return f"unable, runway {runway_name} not found", [], 3
+            return MSG_RUNWAY_NOT_FOUND.format(rwy=runway_name), [], CMD_TAKEOFF_PARAMS_REQUIRED
         if not runway.is_available():
-            return f"unable, {runway_name} occupied", [], 3
+            return MSG_RUNWAY_OCCUPIED.format(rwy=runway_name), [], CMD_TAKEOFF_PARAMS_REQUIRED
 
         cmd = Command("TAKEOFF", f"{runway_name},{spd},{alt}")
-        ack = f"cleared for takeoff runway {runway_name}, climb to {alt} feet, maintain {spd} knots"
-        return ack, [cmd], 3
-
+        return MSG_TAKEOFF_CLEARANCE.format(rwy=runway_name, alt=alt, spd=spd), [cmd], CMD_TAKEOFF_PARAMS_REQUIRED
 
     def _handle_landing(self, tokens, i, aircraft):
         """Handle landing clearances."""
         if i + 1 >= len(tokens):
-            return "landing clearance missing runway", [], 0
+            return MSG_LANDING_MISSING_RUNWAY, [], 0
 
         runway_name = tokens[i + 1]
         runway = get_runway(runway_name)
-
         if not runway:
-            return f"unable, runway {runway_name} not found", [], 1
+            return MSG_RUNWAY_NOT_FOUND.format(rwy=runway_name), [], 1
         if not runway.is_available():
-            return f"unable, {runway_name} occupied", [], 1
+            return MSG_RUNWAY_OCCUPIED.format(rwy=runway_name), [], 1
 
         heading_diff = _angle_diff(aircraft.hdg, runway.bearing)
         if heading_diff > LANDING_HEADING_OFFSET_DEG:
-            return f"unable, not aligned for {runway_name}", [], 1
+            return MSG_NOT_ALIGNED.format(rwy=runway_name), [], 1
         if aircraft.alt > LANDING_HEIGHT_OFFSET_FT:
-            return "unable, too high for approach", [], 1
+            return MSG_TOO_HIGH, [], 1
 
         cmd = Command("LAND", runway_name)
-        return f"cleared to land runway {runway_name}", [cmd], 1
+        return MSG_LAND_CLEARANCE.format(rwy=runway_name), [cmd], 1
 
     def _build_responses(self, callsign, cmds, ack_segments):
         """Create ATC-style control and acknowledgement messages."""

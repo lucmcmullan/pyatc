@@ -1,6 +1,16 @@
 import dataclasses, pygame, time
 from atc.utils import normalize_hdg, heading_to_vec, nm_to_px, calculate_layout, load_runways
-from constants import HEIGHT, WIDTH
+from constants import (
+    HEIGHT, WIDTH,
+    COLOUR_RUNWAY_BASE, COLOUR_RUNWAY_AVAILABLE, COLOUR_RUNWAY_OCCUPIED, COLOUR_RUNWAY_CLOSED,
+    COLOUR_RUNWAY_LABEL,
+    RUNWAY_BASE_WIDTH, RUNWAY_ACTIVE_WIDTH,
+    RUNWAY_LABEL_OFFSET_X, RUNWAY_LABEL_OFFSET_Y,
+    RUNWAY_NAME_OFFSET_X, RUNWAY_NAME_OFFSET_Y,
+    RUNWAY_DEFAULT_LENGTH_NM, RUNWAY_SUFFIX_LR, RUNWAY_SUFFIX_MULTI,
+    RUNWAY_DEFAULT_STATUS, RUNWAY_OCCUPIED_STATUS, RUNWAY_CLOSED_STATUS,
+    AIRPORT_DEFAULT_ICAO, AIRPORT_DEFAULT_NAME
+)
 from typing import Optional, TYPE_CHECKING
 from .airport import Airport
 
@@ -10,6 +20,7 @@ if TYPE_CHECKING:
 _RUNWAYS: list["Runway"] = []
 _AIRPORTS: list["Airport"] = []
 
+
 def _build_runways():
     layout = calculate_layout(WIDTH, HEIGHT)
     radar_width = layout["RADAR_WIDTH"]
@@ -17,29 +28,28 @@ def _build_runways():
 
     base_runways = load_runways()
 
-    # --- Group runways by bearing ---
+    # Group runways by bearing
     bearing_groups: dict[int, list[dict]] = {}
     for rw in base_runways:
-        bearing = int(round(rw["bearing"] / 10.0)) * 10  # normalize to nearest 10°
+        bearing = int(round(rw["bearing"] / 10.0)) * 10
         bearing_groups.setdefault(bearing, []).append(rw)
 
-    # --- Assign unique suffixes (L/R or A/B/C) ---
+    # Assign suffixes (L/R, A/B/C...)
     for bearing, runways in bearing_groups.items():
         count = len(runways)
         if count == 2:
-            suffixes = ["L", "R"]
+            suffixes = RUNWAY_SUFFIX_LR
         elif count > 2:
-            suffixes = [chr(ord("A") + i) for i in range(count)]  # A, B, C, D...
+            suffixes = RUNWAY_SUFFIX_MULTI[:count]
         else:
             suffixes = [""]
-
         for rw, suffix in zip(runways, suffixes):
             rw["auto_name"] = f"{int(round(rw['bearing'] / 10)):02d}{suffix}"
 
     res = []
     for rw in base_runways:
         bearing = rw["bearing"]
-        length_nm = rw.get("length_nm", 2.0)
+        length_nm = rw.get("length_nm", RUNWAY_DEFAULT_LENGTH_NM)
         half_len = nm_to_px(length_nm / 2)
         cx, cy = int(rw["x"] * radar_width), int(rw["y"] * radar_height)
         dx, dy = heading_to_vec(bearing)
@@ -47,15 +57,16 @@ def _build_runways():
         end = (cx + dx * half_len, cy + dy * half_len)
 
         res.append(Runway(
-            name = rw.get("auto_name") or rw.get("name", "RWY_UNKNOWN"),  # use auto designation
-            x = cx,
-            y = cy,
-            start = start,
-            end = end,
-            bearing = bearing,
-            length_nm = length_nm
+            name=rw.get("auto_name") or rw.get("name", "RWY_UNKNOWN"),
+            x=cx,
+            y=cy,
+            start=start,
+            end=end,
+            bearing=bearing,
+            length_nm=length_nm
         ))
     return res
+
 
 def all_runways() -> list["Runway"]:
     global _RUNWAYS
@@ -63,8 +74,10 @@ def all_runways() -> list["Runway"]:
         _RUNWAYS = _build_runways()
     return _RUNWAYS
 
+
 def get_runway(name: str) -> Optional["Runway"]:
     return next((r for r in all_runways() if r.name == name), None)
+
 
 @dataclasses.dataclass
 class Runway:
@@ -74,9 +87,9 @@ class Runway:
     start: tuple[float, float]
     end: tuple[float, float]
     bearing: int = normalize_hdg(90)
-    length_nm: int = 2
+    length_nm: float = RUNWAY_DEFAULT_LENGTH_NM
     active_aircraft: Optional["Aircraft"] = None
-    status: str = "AVAILABLE" # AVAILABLE, OCCUPIED, CLOSED
+    status: str = RUNWAY_DEFAULT_STATUS  # AVAILABLE, OCCUPIED, CLOSED
     last_used: float = 0.0
     airport: Optional["Airport"] = None
 
@@ -84,53 +97,59 @@ class Runway:
         self.opposite_bearing = normalize_hdg(self.bearing + 180)
 
     def is_available(self):
-        return self.status == "AVAILABLE" and self.active_aircraft is None
-    
+        return self.status == RUNWAY_DEFAULT_STATUS and self.active_aircraft is None
+
     def occupy(self, aircraft: "Aircraft"):
         self.active_aircraft = aircraft
-        self.status = "OCCUPIED"
+        self.status = RUNWAY_OCCUPIED_STATUS
         self.last_used = time.time()
 
     def release(self):
         self.active_aircraft = None
-        self.status = "AVAILABLE"
+        self.status = RUNWAY_DEFAULT_STATUS
         self.last_used = time.time()
 
     def draw(self, screen, font):
-        colour = (255, 255, 255)
-        if self.status == "OCCUPIED":
-            colour = (255, 100, 100)
-        elif self.status == "CLOSED":
-            colour = (100, 100, 100)
+        # Base line
+        pygame.draw.line(screen, COLOUR_RUNWAY_BASE, self.start, self.end, RUNWAY_BASE_WIDTH)
 
-        pygame.draw.line(screen, (180, 180, 180), self.start, self.end, 6)
-        pygame.draw.line(screen, colour, self.start, self.end, 2)
+        # Active overlay
+        if self.status == RUNWAY_OCCUPIED_STATUS:
+            colour = COLOUR_RUNWAY_OCCUPIED
+        elif self.status == RUNWAY_CLOSED_STATUS:
+            colour = COLOUR_RUNWAY_CLOSED
+        else:
+            colour = COLOUR_RUNWAY_AVAILABLE
+        pygame.draw.line(screen, colour, self.start, self.end, RUNWAY_ACTIVE_WIDTH)
 
+        # Runway number markings
         label_a = f"{int(round(self.bearing / 10)) % 36:02d}"
         label_b = f"{int(round(self.opposite_bearing / 10)) % 36:02d}"
 
         text_a = font.render(label_a, True, colour)
         text_b = font.render(label_b, True, colour)
-        
-        screen.blit(text_a, (self.start[0] + 10, self.start[1] - 5))
-        screen.blit(text_b, (self.end[0] - 20, self.end[1] - 5))
+        screen.blit(text_a, (self.start[0] + RUNWAY_LABEL_OFFSET_X, self.start[1] + RUNWAY_LABEL_OFFSET_Y))
+        screen.blit(text_b, (self.end[0] - 20, self.end[1] + RUNWAY_LABEL_OFFSET_Y))
 
-        name_text = font.render(self.name, True, (255, 255, 0))
-        screen.blit(name_text, (self.x + 10, self.y + 10))
+        # Runway name label
+        name_text = font.render(self.name, True, COLOUR_RUNWAY_LABEL)
+        screen.blit(name_text, (self.x + RUNWAY_NAME_OFFSET_X, self.y + RUNWAY_NAME_OFFSET_Y))
+
 
 def build_airports():
     global _AIRPORTS
     if _AIRPORTS:
         return _AIRPORTS
-    
+
     runways = all_runways()
-    airport = Airport(icao="EGXX", name="Airport1",runways=runways)
+    airport = Airport(icao=AIRPORT_DEFAULT_ICAO, name=AIRPORT_DEFAULT_NAME, runways=runways)
 
     for rw in runways:
         rw.airport = airport
 
     _AIRPORTS.append(airport)
     return _AIRPORTS
+
 
 def get_airport() -> Optional["Airport"]:
     if not _AIRPORTS:

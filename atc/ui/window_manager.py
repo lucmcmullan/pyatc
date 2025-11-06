@@ -5,7 +5,7 @@ from multiprocessing.process import BaseProcess
 from typing import Any, Dict, Optional, Callable
 
 _manager: Optional[SyncManager] = None
-_shared_state: Optional[DictProxy[str, Any]] = None
+_shared_state: Optional[DictProxy] = None
 _active_windows: dict[str, BaseProcess] = {}
 
 def _ensure_manager() -> None:

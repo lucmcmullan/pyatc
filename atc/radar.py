@@ -1,6 +1,6 @@
 import math, pygame, psutil
 from atc.utils import heading_to_vec, load_fixes, nm_to_px, wrap_text, calculate_layout
-from constants import WIDTH, HEIGHT
+from constants import *
 
 def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None, live=False):
     HEIGHT = pygame.display.get_surface().get_height()
@@ -9,106 +9,91 @@ def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None, live
 
     SIDEBAR_WIDTH = layout["SIDEBAR_WIDTH"]
     RADAR_WIDTH = layout["RADAR_WIDTH"]
-    
 
-    panel_x = RADAR_WIDTH - SIDEBAR_WIDTH - 10
-    panel_y = 50
-    panel_w = SIDEBAR_WIDTH - 20
-    panel_h = HEIGHT - 100
+    panel_x = RADAR_WIDTH - SIDEBAR_WIDTH - FPL_MARGIN_X
+    panel_y = FPL_MARGIN_Y
+    panel_w = SIDEBAR_WIDTH - FPL_WIDTH_OFFSET
+    panel_h = HEIGHT - FPL_HEIGHT_MARGIN
 
-    pygame.draw.rect(screen, (10, 10, 10), (panel_x, panel_y, panel_w, panel_h))
-    pygame.draw.rect(screen, (100, 100, 100), (panel_x, panel_y, panel_w, panel_h), 1)
+    pygame.draw.rect(screen, COLOUR_FPL_BG, (panel_x, panel_y, panel_w, panel_h))
+    pygame.draw.rect(screen, COLOUR_FPL_BORDER, (panel_x, panel_y, panel_w, panel_h), 1)
 
-    title = font.render("FLIGHT PROGRESS LOG", True, (255, 255, 0))
+    title = font.render("FLIGHT PROGRESS LOG", True, COLOUR_FPL_TITLE)
     screen.blit(title, (panel_x + 10, panel_y + 10))
 
-    expand_icon = pygame.Rect(panel_x + panel_w - 25, panel_y + 5, 18, 18)
-    pygame.draw.rect(screen, (80, 80, 80), expand_icon)
-    pygame.draw.line(screen, (255, 255, 0), expand_icon.topleft, expand_icon.bottomright, 2)
-    pygame.draw.line(screen, (255, 255, 0), expand_icon.topright, expand_icon.bottomleft, 2)
+    expand_icon = pygame.Rect(
+        panel_x + panel_w - EXPAND_ICON_OFFSET, panel_y + EXPAND_ICON_PADDING, *EXPAND_ICON_SIZE
+    )
+    pygame.draw.rect(screen, COLOUR_EXPAND_ICON_BG, expand_icon)
+    pygame.draw.line(screen, COLOUR_EXPAND_ICON_X, expand_icon.topleft, expand_icon.bottomright, 2)
+    pygame.draw.line(screen, COLOUR_EXPAND_ICON_X, expand_icon.topright, expand_icon.bottomleft, 2)
 
-    if live:
-        aircraft_list = planes_or_snapshot
-    else:
-        aircraft_list = [
-            {
-                "callsign": ac.callsign,
-                "alt": getattr(ac, "alt", 0),
-                "spd": getattr(ac, "spd", 0),
-                "hdg": getattr(ac, "hdg", 0),
-                "state": getattr(ac, "state", "UNKNOWN"),
-            }
-            for ac in planes_or_snapshot
-        ]
+    aircraft_list = planes_or_snapshot if live else [
+        {
+            "callsign": ac.callsign,
+            "alt": getattr(ac, "alt", 0),
+            "spd": getattr(ac, "spd", 0),
+            "hdg": getattr(ac, "hdg", 0),
+            "state": getattr(ac, "state", "UNKNOWN"),
+        }
+        for ac in planes_or_snapshot
+    ]
 
     y = panel_y + 35
-    row_h = 24
-
     for ac in aircraft_list:
         state = ac.get("state", "UNKNOWN").upper()
+        bg = {
+            "AIRBORNE": COLOUR_STATE_AIRBORNE,
+            "CLIMBING": COLOUR_STATE_AIRBORNE,
+            "CRUISE": COLOUR_STATE_AIRBORNE,
+            "LANDING": COLOUR_STATE_APPROACH,
+            "APPROACH": COLOUR_STATE_APPROACH,
+            "TAKEOFF": COLOUR_STATE_TAKEOFF,
+            "LANDED": COLOUR_STATE_LANDED,
+        }.get(state, COLOUR_STATE_UNKNOWN)
 
-        if state in ("AIRBORNE", "CLIMBING", "CRUISE"):
-            bg = (20, 80, 20)
-        elif state in ("LANDING", "APPROACH"):
-            bg = (120, 30, 30)
-        elif state == "TAKEOFF":
-            bg = (120, 120, 30)
-        elif state == "LANDED":
-            bg = (40, 40, 40)
-        else:
-            bg = (30, 30, 30)
-
-        pygame.draw.rect(screen, bg, (panel_x + 5, y, panel_w - 10, row_h))
-
+        pygame.draw.rect(screen, bg, (panel_x + 5, y, panel_w - 10, FPL_ROW_HEIGHT))
         info = f"{ac['callsign']:8}  {int(ac['alt']):5}ft  {int(ac['spd']):3}kt  {int(ac['hdg']):03d}°"
-        txt = font.render(info, True, (255, 255, 255))
+        txt = font.render(info, True, COLOUR_FPL_TEXT)
         screen.blit(txt, (panel_x + 10, y + 3))
-
-        y += row_h + 2
-        if y > panel_y + panel_h - row_h:
+        y += FPL_ROW_HEIGHT + 2
+        if y > panel_y + panel_h - FPL_ROW_HEIGHT:
             break
 
-    # --- Legend ---
-    legend_y = panel_y + panel_h - 90
+    # Legend
+    legend_y = panel_y + panel_h - FPL_LEGEND_HEIGHT
     legend = [
-        ("Airborne", (20, 80, 20)),
-        ("Approach", (120, 30, 30)),
-        ("Takeoff", (120, 120, 30)),
-        ("Landed", (40, 40, 40)),
+        ("Airborne", COLOUR_STATE_AIRBORNE),
+        ("Approach", COLOUR_STATE_APPROACH),
+        ("Takeoff", COLOUR_STATE_TAKEOFF),
+        ("Landed", COLOUR_STATE_LANDED),
     ]
     for label, color in legend:
         pygame.draw.rect(screen, color, (panel_x + 10, legend_y, 15, 15))
-        text = font.render(label, True, (200, 200, 200))
-        screen.blit(text, (panel_x + 30, legend_y - 2))
+        screen.blit(font.render(label, True, COLOUR_LEGEND_TEXT), (panel_x + 30, legend_y - 2))
         legend_y += 18
 
     return {"expand_icon": expand_icon}
 
+
 def draw_aircraft(screen, font, plane, active=False):
-    colour = (0, 255, 0) if not active else (255, 255, 0)
+    colour = COLOUR_PLANE_ACTIVE if active else COLOUR_PLANE_DEFAULT
 
-    size = 8
-    rect = pygame.Surface((size, size), pygame.SRCALPHA)
+    rect = pygame.Surface((PLANE_ICON_SIZE, PLANE_ICON_SIZE), pygame.SRCALPHA)
     rect.fill(colour)
-
     rotated = pygame.transform.rotate(rect, -plane.hdg)
     rect_rect = rotated.get_rect(center=(plane.x, plane.y))
     screen.blit(rotated, rect_rect.topleft)
 
     dx, dy = heading_to_vec(plane.hdg)
-    line_len = 25
-    end_x = plane.x + dx * line_len
-    end_y = plane.y + dy * line_len
+    end_x = plane.x + dx * PLANE_HEADING_LINE_LENGTH
+    end_y = plane.y + dy * PLANE_HEADING_LINE_LENGTH
     pygame.draw.line(screen, colour, (plane.x, plane.y), (end_x, end_y), 2)
 
-    tag_callsign = f"{plane.callsign}"
-    tag_info = f"{int(plane.alt)} {int(plane.spd)} {int(plane.hdg)}"
-
-    text_callsign = font.render(tag_callsign, True, colour)
-    text_info = font.render(tag_info, True, colour)
-
-    screen.blit(text_callsign, (plane.x + 10, plane.y - 20))
-    screen.blit(text_info, (plane.x + 10, plane.y - 5))
+    text_callsign = font.render(plane.callsign, True, colour)
+    text_info = font.render(f"{int(plane.alt)} {int(plane.spd)} {int(plane.hdg)}", True, colour)
+    screen.blit(text_callsign, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_CALLSIGN))
+    screen.blit(text_info, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_INFO))
 
 
 def draw_performance_menu(screen, font, clock, planes, runways, sim_speed):
@@ -118,37 +103,31 @@ def draw_performance_menu(screen, font, clock, planes, runways, sim_speed):
     used_mem_mb = mem.used / (1024 ** 2)
     total_mem_mb = mem.total / (1024 ** 2)
 
-    aircraft_count = len(planes)
-    runway_count = len(runways)
-    occupied = [r.name for r in runways if r.status == "OCCUPIED"]
-    queued_commands = sum(len(p.command_queue) for p in planes)
-
     lines = [
         "=== PERFORMANCE PROFILE ===",
         f"FPS: {fps}",
         f"Simulation speed: {sim_speed:.1f}x",
         f"CPU usage: {cpu_percent:.1f}%",
         f"Memory: {used_mem_mb:.0f} / {total_mem_mb:.0f} MB",
-        f"Aircraft active: {aircraft_count}",
-        f"Runways active: {runway_count}",
-        f"Runways occupied: {', '.join(occupied) if occupied else 'None'}",
-        f"Total queued commands: {queued_commands}",
+        f"Aircraft active: {len(planes)}",
+        f"Runways active: {len(runways)}",
+        f"Runways occupied: {', '.join(r.name for r in runways if r.status == 'OCCUPIED') or 'None'}",
+        f"Total queued commands: {sum(len(p.command_queue) for p in planes)}",
     ]
 
     width = 360
     height = len(lines) * 22 + 40
     surf = pygame.Surface((width, height), pygame.SRCALPHA)
-    surf.fill((10, 10, 10, 210))
+    surf.fill(COLOUR_PERF_BG)
 
-    expand_rect = pygame.Rect(width - 25, 8, 18, 18)
-    pygame.draw.rect(surf, (80, 80, 80), expand_rect)
-    pygame.draw.line(surf, (255, 255, 0), expand_rect.topleft, expand_rect.bottomright, 2)
-    pygame.draw.line(surf, (255, 255, 0), expand_rect.topright, expand_rect.bottomleft, 2)
+    expand_rect = pygame.Rect(width - EXPAND_ICON_OFFSET, 8, *EXPAND_ICON_SIZE)
+    pygame.draw.rect(surf, COLOUR_EXPAND_ICON_BG, expand_rect)
+    pygame.draw.line(surf, COLOUR_PERF_BORDER, expand_rect.topleft, expand_rect.bottomright, 2)
+    pygame.draw.line(surf, COLOUR_PERF_BORDER, expand_rect.topright, expand_rect.bottomleft, 2)
 
     y = 10
     for line in lines:
-        text = font.render(line, True, (255, 255, 180))
-        surf.blit(text, (10, y))
+        surf.blit(font.render(line, True, COLOUR_PERF_TEXT), (10, y))
         y += 22
 
     screen.blit(surf, (10, 10))
@@ -158,48 +137,48 @@ def draw_performance_menu(screen, font, clock, planes, runways, sim_speed):
 def draw_radar(screen, planes, font, messages, conflicts,
                radio_log=None, active_cs=None, selected_plane=None, radio_scroll=0,
                runways=None):
-    
+
     layout = calculate_layout(WIDTH, HEIGHT)
     RADAR_WIDTH = layout["RADAR_WIDTH"]
     RADAR_CENTER = layout["RADAR_CENTER"]
     SIDEBAR_WIDTH = layout["SIDEBAR_WIDTH"]
     SIDEBAR_OFFSET = layout["SIDEBAR_OFFSET"]
     sidebar_x = RADAR_WIDTH - SIDEBAR_OFFSET
-    BOTTOM_MARGIN = layout["BOTTOM_MARGIN"]
-    
-    screen.fill((0, 0, 20))
-    
+
+    screen.fill(COLOUR_RADAR_BG)
+
     if runways:
         for rw in runways:
             rw.draw(screen, font)
 
+    # Fix rings and grid
     fixes = load_fixes()
     for name, position in fixes.items():
         x, y = position["x"], position["y"]
         scale = position.get("ring_scale", 1.0)
 
-        for nm in range(10, 30, 10):
+        for nm in range(*RADAR_FIX_RING_SPACING_NM):
             pixel = int(nm_to_px(nm) * scale)
-            pygame.draw.circle(screen, (50, 50, 100), (x, y), pixel, 1)
-            text = font.render(f"{nm}", True, (100, 120, 180))
-            screen.blit(text, (x + pixel + 4, y - int(8 * scale)))
+            pygame.draw.circle(screen, COLOUR_FIX_RING, (x, y), pixel, 1)
+            screen.blit(font.render(f"{nm}", True, COLOUR_FIX_TEXT),
+                        (x + pixel + 4, y - int(8 * scale)))
 
-        for deg in range(0, 360, 30):
+        for deg in range(0, 360, RADAR_HEADING_INTERVAL_DEG):
             rad = math.radians(deg)
-            dx = math.sin(rad) * nm_to_px(20) * scale
-            dy = -math.cos(rad) * nm_to_px(20) * scale
+            dx = math.sin(rad) * nm_to_px(RADAR_LINE_RANGE_NM) * scale
+            dy = -math.cos(rad) * nm_to_px(RADAR_LINE_RANGE_NM) * scale
             pygame.draw.line(screen, (60, 60, 120), (x, y), (x + dx, y + dy))
 
-        pygame.draw.circle(screen, (100, 100, 255), (x, y), int(5 * scale))
-        pygame.draw.circle(screen, (180, 180, 255), (x, y), int(2 * scale))
-        label = font.render(name, True, (180, 180, 255))
-        screen.blit(label, (x + int(10 * scale), y - int(10 * scale)))
+        pygame.draw.circle(screen, COLOUR_FIX_CENTER_OUTER, (x, y), int(5 * scale))
+        pygame.draw.circle(screen, COLOUR_FIX_CENTER_INNER, (x, y), int(2 * scale))
+        screen.blit(font.render(name, True, COLOUR_FIX_LABEL),
+                    (x + int(10 * scale), y - int(10 * scale)))
 
-    for radius in range(100, 1300, 100):
-        pygame.draw.circle(screen, (0, 60, 0), RADAR_CENTER, radius, 1)
+    for radius in range(RADAR_RING_SPACING, RADAR_RING_MAX_RADIUS, RADAR_RING_SPACING):
+        pygame.draw.circle(screen, COLOUR_RADAR_GRID, RADAR_CENTER, radius, 1)
 
-    pygame.draw.line(screen, (0, 60, 0), (RADAR_CENTER[0], 0), (RADAR_CENTER[0], HEIGHT), 1)
-    pygame.draw.line(screen, (0, 60, 0), (0, RADAR_CENTER[1]), (RADAR_WIDTH, RADAR_CENTER[1]), 1)
+    pygame.draw.line(screen, COLOUR_RADAR_GRID, (RADAR_CENTER[0], 0), (RADAR_CENTER[0], HEIGHT), 1)
+    pygame.draw.line(screen, COLOUR_RADAR_GRID, (0, RADAR_CENTER[1]), (RADAR_WIDTH, RADAR_CENTER[1]), 1)
 
     for plane in planes:
         draw_aircraft(screen, font, plane, active=(plane.callsign == active_cs))
@@ -207,35 +186,29 @@ def draw_radar(screen, planes, font, messages, conflicts,
     y = 5
     for a, b, lat, vert in conflicts:
         msg = f"CONFLICT {a.callsign}-{b.callsign} {lat:.1f}NM {vert:.0f}FT"
-        screen.blit(font.render(msg, True, (255, 80, 80)), (5, y))
+        screen.blit(font.render(msg, True, COLOUR_CONFLICT), (5, y))
         y += 18
 
-    pygame.draw.rect(screen, (10, 10, 10), (sidebar_x, 0, SIDEBAR_WIDTH, HEIGHT))
-    pygame.draw.line(screen, (60, 60, 60), (sidebar_x, 0), (sidebar_x, HEIGHT), 1)
+    pygame.draw.rect(screen, COLOUR_SIDEBAR_BG, (sidebar_x, 0, SIDEBAR_WIDTH, HEIGHT))
+    pygame.draw.line(screen, COLOUR_SIDEBAR_BORDER, (sidebar_x, 0), (sidebar_x, HEIGHT), 1)
 
-    expand_icon = pygame.Rect(sidebar_x + SIDEBAR_WIDTH - 25, 5, 18, 18)
-    pygame.draw.rect(screen, (80, 80, 80), expand_icon)
-    pygame.draw.line(screen, (255, 255, 0), expand_icon.topleft, expand_icon.bottomright, 2)
-    pygame.draw.line(screen, (255, 255, 0), expand_icon.topright, expand_icon.bottomleft, 2)
+    expand_icon = pygame.Rect(sidebar_x + SIDEBAR_WIDTH - EXPAND_ICON_OFFSET, 5, *EXPAND_ICON_SIZE)
+    pygame.draw.rect(screen, COLOUR_EXPAND_ICON_BG, expand_icon)
+    pygame.draw.line(screen, COLOUR_EXPAND_ICON_X, expand_icon.topleft, expand_icon.bottomright, 2)
+    pygame.draw.line(screen, COLOUR_EXPAND_ICON_X, expand_icon.topright, expand_icon.bottomleft, 2)
 
-    display_plane = selected_plane
-    if not display_plane and active_cs:
-        for plane in planes:
-            if plane.callsign == active_cs:
-                display_plane = plane
-                break
-
+    # Radio / Log sidebar
+    display_plane = selected_plane or next((p for p in planes if p.callsign == active_cs), None)
     if display_plane:
         cs = display_plane.callsign
-        title = f"ACTIVE: {cs}"
-        screen.blit(font.render(title, True, (255, 255, 0)), (sidebar_x + 10, 10))
+        screen.blit(font.render(f"ACTIVE: {cs}", True, COLOUR_MSG_TITLE), (sidebar_x + 10, 10))
 
         log = radio_log.get(cs, []) if radio_log else []
         visible_lines = 30
         y = 40
 
         if not log:
-            screen.blit(font.render("(no messages yet)", True, (120, 120, 120)),
+            screen.blit(font.render("(no messages yet)", True, COLOUR_MSG_PLACEHOLDER),
                         (sidebar_x + 10, y))
         else:
             start = max(0, len(log) - visible_lines - radio_scroll)
@@ -243,23 +216,19 @@ def draw_radar(screen, planes, font, messages, conflicts,
             subset = log[start:end]
 
             for line in subset:
-                color = (150, 150, 255) if line.startswith("CTRL") else (255, 255, 255)
-                wrapped_lines = wrap_text(line, font, SIDEBAR_WIDTH - 25)
-                for wrapped in wrapped_lines:
-                    txt = font.render(wrapped, True, color)
-                    screen.blit(txt, (sidebar_x + 10, y))
+                color = COLOUR_MSG_CTRL if line.startswith("CTRL") else COLOUR_MSG_TEXT
+                for wrapped in wrap_text(line, font, SIDEBAR_WIDTH - 25):
+                    screen.blit(font.render(wrapped, True, color), (sidebar_x + 10, y))
                     y += 18
 
             if len(log) > visible_lines:
                 total = len(log) - visible_lines
                 bar_h = max(20, int(200 * (visible_lines / len(log))))
                 bar_y = int(40 + (radio_scroll / total) * (200 - bar_h))
-                pygame.draw.rect(screen, (80, 80, 80),
+                pygame.draw.rect(screen, COLOUR_MSG_SCROLLBAR,
                                  (sidebar_x + SIDEBAR_WIDTH - 15, bar_y, 8, bar_h))
     else:
-        screen.blit(font.render("Click a plane to view log", True, (180, 180, 180)),
+        screen.blit(font.render("Click a plane to view log", True, COLOUR_MSG_HINT),
                     (sidebar_x + 10, 10))
 
-    return {
-        "expand_icon": expand_icon
-    }
+    return {"expand_icon": expand_icon}
