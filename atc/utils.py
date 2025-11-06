@@ -3,13 +3,12 @@ from constants import *
 
 def get_current_version() -> str:
     try:
-        with open("versions.txt", "r", encoding="utf-8") as f:
+        with open("version.txt", "r", encoding="utf-8") as f:
             lines = f.readlines()
         
-        if len(lines) >= 3:
-            line = lines[2].strip() # 3rd line
-            if line.lower().startswith("current -"):
-                return line.split("-", 1)[1].strip()
+        line = lines[0].strip()
+        if line.lower().startswith("v"):
+            return line
     except Exception as e:
         pass
 
