@@ -27,6 +27,8 @@ has_update, remote_version = check_for_update(VERSION)
 if has_update and remote_version:
     print(f"Update available: {remote_version} (local {VERSION})")
     pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} — Update {remote_version}")
+else:
+    print("PyATC up-to-date!")
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     """Log uncaught exceptions and freeze the sim gracefully."""
