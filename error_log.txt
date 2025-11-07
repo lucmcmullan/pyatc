@@ -60,3 +60,16 @@ Traceback (most recent call last):
 TypeError: unsupported operand type(s) for -: 'int' and 'builtin_function_or_method'
 
 ------------------------------------------------------------
+[2025-11-07 14:27:50]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 333, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 311, in main
+    draw_radar(
+  File "D:\Personal\pyatc\atc\radar.py", line 181, in draw_radar
+    draw_aircraft(screen, font, plane, active=(plane.callsign == active_cs))
+  File "D:\Personal\pyatc\atc\radar.py", line 79, in draw_aircraft
+    topline_const = f"{plane.callsign} {plane.status}"
+AttributeError: 'Aircraft' object has no attribute 'status'
+
+------------------------------------------------------------

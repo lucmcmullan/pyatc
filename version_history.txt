@@ -130,10 +130,11 @@
 
         2.1.1 - UI refinements
             - Added ui modals for quick updates
+            - Added plane state in tag, next to callsign
         
         2.1.2 - UI, FPS advancements
             - Removed all references to in-game windows
             - Converted menus to outside windows
     
     2.2.0
-        - Add voice response for aircraft
+        - Add voice response for all aircraft (not just AI)

@@ -75,10 +75,15 @@ def draw_aircraft(screen, font, plane, active=False):
     end_y = plane.y + dy * PLANE_HEADING_LINE_LENGTH
     pygame.draw.line(screen, colour, (plane.x, plane.y), (end_x, end_y), 2)
 
-    text_callsign = font.render(plane.callsign, True, colour)
-    text_info = font.render(f"{int(plane.alt)} {int(plane.spd)} {int(plane.hdg)}", True, colour)
-    screen.blit(text_callsign, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_CALLSIGN))
-    screen.blit(text_info, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_INFO))
+    # aircraft label construction
+    topline_const = f"{plane.callsign} {plane.state}"
+    bottomline_const = f"{int(plane.alt)} {int(plane.spd)} {int(plane.hdg)}"
+
+    text_topline = font.render(topline_const, True, colour)
+    text_bottomline = font.render(bottomline_const, True, colour)
+
+    screen.blit(text_topline, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_CALLSIGN))
+    screen.blit(text_bottomline, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_INFO))
 
 
 def draw_performance_menu(screen, font, planes_or_snapshot, *args, **kwargs):
