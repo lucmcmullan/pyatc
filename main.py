@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import psutil
 import pygame
 import traceback
 from collections import defaultdict
@@ -170,6 +171,18 @@ def update_simulation(state, dt):
         {"callsign": p.callsign, "alt": p.alt, "spd": p.spd, "hdg": p.hdg, "state": p.state}
         for p in state["planes"]
     ])
+
+    update_shared_state("Performance", {
+        "fps": int(pygame.time.Clock().get_fps()),
+        "sim_speed": SIM_SPEED,
+        "cpu_percent": psutil.cpu_percent(interval=None),
+        "used_mem_mb": psutil.virtual_memory().used / (1024 ** 2),
+        "total_mem_mb": psutil.virtual_memory().total / (1024 ** 2),
+        "plane_count": len(state["planes"]),
+        "runway_count": len(state["runways"]),
+        "occupied": ', '.join(r.name for r in state["runways"] if r.status == 'OCCUPIED') or 'None',
+        "last_update": time.strftime("%H:%M:%S"),
+    })
 
 
 def render_console(screen, font, state, layout):

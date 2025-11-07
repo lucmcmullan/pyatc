@@ -96,13 +96,35 @@ def draw_aircraft(screen, font, plane, active=False):
     screen.blit(text_info, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_INFO))
 
 
-def draw_performance_menu(screen, font, planes, runways, sim_speed):
-    clock = pygame.time.Clock()
-    fps = int(clock.get_fps())
-    cpu_percent = psutil.cpu_percent(interval=None)
-    mem = psutil.virtual_memory()
-    used_mem_mb = mem.used / (1024 ** 2)
-    total_mem_mb = mem.total / (1024 ** 2)
+def draw_performance_menu(screen, font, planes_or_snapshot, *args, **kwargs):
+    """
+    Draws performance statistics (in main view or detached window).
+
+    planes_or_snapshot:
+        • In the main process → list of plane objects
+        • In detached window → dict snapshot via update_shared_state()
+    """
+    if isinstance(planes_or_snapshot, dict):
+        snapshot = planes_or_snapshot
+        fps = snapshot.get("fps", 0)
+        sim_speed = snapshot.get("sim_speed", 1.0)
+        cpu_percent = snapshot.get("cpu_percent", 0.0)
+        used_mem_mb = snapshot.get("used_mem_mb", 0.0)
+        total_mem_mb = snapshot.get("total_mem_mb", 0.0)
+        plane_count = snapshot.get("plane_count", 0)
+        runway_count = snapshot.get("runway_count", 0)
+        occupied = snapshot.get("occupied", "None")
+    else:
+        planes, runways, sim_speed = planes_or_snapshot, args[0], args[1]
+        clock = pygame.time.Clock()
+        fps = int(clock.get_fps())
+        cpu_percent = psutil.cpu_percent(interval=None)
+        mem = psutil.virtual_memory()
+        used_mem_mb = mem.used / (1024 ** 2)
+        total_mem_mb = mem.total / (1024 ** 2)
+        plane_count = len(planes)
+        runway_count = len(runways)
+        occupied = ', '.join(r.name for r in runways if r.status == 'OCCUPIED') or 'None'
 
     lines = [
         "=== PERFORMANCE PROFILE ===",
@@ -110,10 +132,9 @@ def draw_performance_menu(screen, font, planes, runways, sim_speed):
         f"Simulation speed: {sim_speed:.1f}x",
         f"CPU usage: {cpu_percent:.1f}%",
         f"Memory: {used_mem_mb:.0f} / {total_mem_mb:.0f} MB",
-        f"Aircraft active: {len(planes)}",
-        f"Runways active: {len(runways)}",
-        f"Runways occupied: {', '.join(r.name for r in runways if r.status == 'OCCUPIED') or 'None'}",
-        f"Total queued commands: {sum(len(p.command_queue) for p in planes)}",
+        f"Aircraft active: {plane_count}",
+        f"Runways active: {runway_count}",
+        f"Runways occupied: {occupied}",
     ]
 
     width = 360
