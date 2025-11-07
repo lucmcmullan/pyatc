@@ -1,3 +1,5 @@
+import pygame
+
 GH_API = "https://raw.githubusercontent.com/lucmcmullan/pyatc/refs/heads/main/version.txt"
 
 AI_TRAFFIC = False
@@ -23,8 +25,11 @@ SIM_SPEED = 5.0
 DEFAULT_FONT = "Consolas"
 CURSOR_BLINK_SPEED = 2.0
 
-NAME_MAIN_WINDOW = "PyATC"
-NAME_FLIGHT_LOG = "Flight Progress Log"
+WINDOW_MAIN = "PyATC"
+WINDOW_HELP = "Help"
+WINDOW_PERFORMANCE = "Performance"
+WINDOW_FLIGHT_PROGRESS = "Flight Progress"
+WINDOW_ERROR = "Error"
 
 COLOUR_BG = (0, 0, 20)
 COLOUR_CONSOLE_BG = (20, 20, 20)
@@ -226,3 +231,19 @@ RUNWAY_CLOSED_STATUS = "CLOSED"
 
 AIRPORT_DEFAULT_ICAO = "EGXX"
 AIRPORT_DEFAULT_NAME = "Airport1"
+
+FUNCTION_KEYS = {
+    "help": pygame.K_F1,
+    "performance": pygame.K_F3,
+    "flight_progress": pygame.K_F4,
+    "errors": pygame.K_F9
+}
+
+# window names
+
+
+HELP_TEXT = """
+Help
+Command
+
+"""

@@ -2,18 +2,17 @@ import math, pygame, psutil
 from atc.utils import heading_to_vec, load_fixes, nm_to_px, wrap_text, calculate_layout
 from constants import *
 
-def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None, live=False):
-    HEIGHT = pygame.display.get_surface().get_height()
+def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None):
     if not layout:
         layout = calculate_layout(WIDTH, HEIGHT)
 
     SIDEBAR_WIDTH = layout["SIDEBAR_WIDTH"]
     RADAR_WIDTH = layout["RADAR_WIDTH"]
 
-    panel_x = RADAR_WIDTH - SIDEBAR_WIDTH - FPL_MARGIN_X
-    panel_y = FPL_MARGIN_Y
-    panel_w = SIDEBAR_WIDTH - FPL_WIDTH_OFFSET
-    panel_h = HEIGHT - FPL_HEIGHT_MARGIN
+    panel_w, panel_h = 400, 440
+    surf_w, surf_h = screen.get_size()
+    panel_x = (surf_w - panel_w) // 2
+    panel_y = (surf_h - panel_h) // 2
 
     pygame.draw.rect(screen, COLOUR_FPL_BG, (panel_x, panel_y, panel_w, panel_h))
     pygame.draw.rect(screen, COLOUR_FPL_BORDER, (panel_x, panel_y, panel_w, panel_h), 1)
@@ -24,23 +23,9 @@ def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None, live
     expand_icon = pygame.Rect(
         panel_x + panel_w - EXPAND_ICON_OFFSET, panel_y + EXPAND_ICON_PADDING, *EXPAND_ICON_SIZE
     )
-    pygame.draw.rect(screen, COLOUR_EXPAND_ICON_BG, expand_icon)
-    pygame.draw.line(screen, COLOUR_EXPAND_ICON_X, expand_icon.topleft, expand_icon.bottomright, 2)
-    pygame.draw.line(screen, COLOUR_EXPAND_ICON_X, expand_icon.topright, expand_icon.bottomleft, 2)
-
-    aircraft_list = planes_or_snapshot if live else [
-        {
-            "callsign": ac.callsign,
-            "alt": getattr(ac, "alt", 0),
-            "spd": getattr(ac, "spd", 0),
-            "hdg": getattr(ac, "hdg", 0),
-            "state": getattr(ac, "state", "UNKNOWN"),
-        }
-        for ac in planes_or_snapshot
-    ]
 
     y = panel_y + 35
-    for ac in aircraft_list:
+    for ac in planes_or_snapshot:
         state = ac.get("state", "UNKNOWN").upper()
         bg = {
             "AIRBORNE": COLOUR_STATE_AIRBORNE,
@@ -104,27 +89,15 @@ def draw_performance_menu(screen, font, planes_or_snapshot, *args, **kwargs):
         • In the main process → list of plane objects
         • In detached window → dict snapshot via update_shared_state()
     """
-    if isinstance(planes_or_snapshot, dict):
-        snapshot = planes_or_snapshot
-        fps = snapshot.get("fps", 0)
-        sim_speed = snapshot.get("sim_speed", 1.0)
-        cpu_percent = snapshot.get("cpu_percent", 0.0)
-        used_mem_mb = snapshot.get("used_mem_mb", 0.0)
-        total_mem_mb = snapshot.get("total_mem_mb", 0.0)
-        plane_count = snapshot.get("plane_count", 0)
-        runway_count = snapshot.get("runway_count", 0)
-        occupied = snapshot.get("occupied", "None")
-    else:
-        planes, runways, sim_speed = planes_or_snapshot, args[0], args[1]
-        clock = pygame.time.Clock()
-        fps = int(clock.get_fps())
-        cpu_percent = psutil.cpu_percent(interval=None)
-        mem = psutil.virtual_memory()
-        used_mem_mb = mem.used / (1024 ** 2)
-        total_mem_mb = mem.total / (1024 ** 2)
-        plane_count = len(planes)
-        runway_count = len(runways)
-        occupied = ', '.join(r.name for r in runways if r.status == 'OCCUPIED') or 'None'
+    snapshot = planes_or_snapshot
+    fps = snapshot.get("fps", 0)
+    sim_speed = snapshot.get("sim_speed", 1.0)
+    cpu_percent = snapshot.get("cpu_percent", 0.0)
+    used_mem_mb = snapshot.get("used_mem_mb", 0.0)
+    total_mem_mb = snapshot.get("total_mem_mb", 0.0)
+    plane_count = snapshot.get("plane_count", 0)
+    runway_count = snapshot.get("runway_count", 0)
+    occupied = snapshot.get("occupied", "None")
 
     lines = [
         "=== PERFORMANCE PROFILE ===",
@@ -143,9 +116,6 @@ def draw_performance_menu(screen, font, planes_or_snapshot, *args, **kwargs):
     surf.fill(COLOUR_PERF_BG)
 
     expand_rect = pygame.Rect(width - EXPAND_ICON_OFFSET, 8, *EXPAND_ICON_SIZE)
-    pygame.draw.rect(surf, COLOUR_EXPAND_ICON_BG, expand_rect)
-    pygame.draw.line(surf, COLOUR_PERF_BORDER, expand_rect.topleft, expand_rect.bottomright, 2)
-    pygame.draw.line(surf, COLOUR_PERF_BORDER, expand_rect.topright, expand_rect.bottomleft, 2)
 
     y = 10
     for line in lines:

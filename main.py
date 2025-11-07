@@ -18,20 +18,21 @@ from atc.ui.window_manager import open_detached_window, close_all_windows, updat
 from constants import (
     WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE,
     INITIAL_PLANE_COUNT, DEFAULT_FONT, CURSOR_BLINK_SPEED,
-    NAME_MAIN_WINDOW, NAME_FLIGHT_LOG, COLOUR_BTN_TEXT,
-    COLOUR_BG, COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT,
+    WINDOW_MAIN, FUNCTION_KEYS,
+    COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT, INITIAL_PLANE_COUNT,
     COLOUR_ERROR_BG, COLOUR_ERROR_HEADER, COLOUR_ERROR_TEXT,
-    AI_TRAFFIC, AI_SPAWN_INTERVAL_S, INITIAL_PLANE_COUNT,
-    MODAL_WIDTH, MODAL_HEIGHT, COLOUR_MODAL_BG, COLOUR_MODAL_CARD,
-    COLOUR_MODAL_TEXT, COLOUR_MODAL_SUB, COLOUR_BTN_BG,
-    COLOUR_BTN_BG_HOVER
+    AI_TRAFFIC, AI_SPAWN_INTERVAL_S, WINDOW_HELP, WINDOW_ERROR,
+    WINDOW_FLIGHT_PROGRESS, WINDOW_PERFORMANCE
 )
 
 
 parser = CommandParser()
 VERSION = get_current_version()
 fatal_error = None
+
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+
+clock = pygame.time.Clock()
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     """Log uncaught exceptions and freeze the sim gracefully."""
@@ -55,6 +56,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 sys.excepthook = handle_exception
 
 def handle_keyboard_input(event, state):
+    layout = calculate_layout(WIDTH, HEIGHT)
     """Process all keyboard input events."""
     key = event.key
 
@@ -64,7 +66,7 @@ def handle_keyboard_input(event, state):
         results = parser.parse(state["input_str"], state["planes"])
 
         if state["input_str"].strip().upper() == "HELP":
-            state["show_help"] = not state["show_help"]
+            open_detached_window("Help", draw_help_window)
             state["input_str"] = ""
             state["cursor_pos"] = 0
             return
@@ -91,14 +93,15 @@ def handle_keyboard_input(event, state):
         state["cursor_pos"] = max(0, state["cursor_pos"] - 1)
     elif key == pygame.K_RIGHT:
         state["cursor_pos"] = min(len(state["input_str"]), state["cursor_pos"] + 1)
-    elif key == pygame.K_F1:
-        state["show_help"] = not state["show_help"]
-    elif key == pygame.K_F3:
-        state["show_perf"] = not state["show_perf"]
-    elif key == pygame.K_F4:
-        state["show_flight_log"] = not state["show_flight_log"]
-    elif key == pygame.K_F9:
-        state["show_error_log"] = not state["show_error_log"]
+    elif key == FUNCTION_KEYS["help"]:
+        open_detached_window(WINDOW_HELP, draw_help_window)
+    elif key == FUNCTION_KEYS["performance"]:
+        open_detached_window(WINDOW_PERFORMANCE, draw_performance_menu, state["planes"], state["runways"], SIM_SPEED)
+    elif key == FUNCTION_KEYS["flight_progress"]:
+        open_detached_window(WINDOW_FLIGHT_PROGRESS, draw_flight_progress_log, state["planes"], layout)
+    elif key == FUNCTION_KEYS["errors"]:
+        if fatal_error:
+            show_modal(WINDOW_ERROR, fatal_error)
     elif event.unicode.isprintable():
         state["input_str"] = (
             state["input_str"][:state["cursor_pos"]]
@@ -124,14 +127,6 @@ def handle_update_modal_event(event: pygame.event.Event, state: dict):
 def handle_mouse_input(event, state, layout, screen, font):
     """Process all mouse input events."""
     mx, my = event.pos
-
-    # Expand Flight Progress Log
-    if state["show_flight_log"]:
-        rects = draw_flight_progress_log(screen, font, state["planes"], layout)
-        expand_icon = rects.get("expand_icon") if rects else None
-        if expand_icon and expand_icon.collidepoint(event.pos):
-            state["show_flight_log"] = False
-            return
 
     # Left click — select aircraft
     if event.button == 1:
@@ -173,7 +168,7 @@ def update_simulation(state, dt):
     ])
 
     update_shared_state("Performance", {
-        "fps": int(pygame.time.Clock().get_fps()),
+        "fps": int(state.get("fps_avg", 0)),
         "sim_speed": SIM_SPEED,
         "cpu_percent": psutil.cpu_percent(interval=None),
         "used_mem_mb": psutil.virtual_memory().used / (1024 ** 2),
@@ -181,7 +176,6 @@ def update_simulation(state, dt):
         "plane_count": len(state["planes"]),
         "runway_count": len(state["runways"]),
         "occupied": ', '.join(r.name for r in state["runways"] if r.status == 'OCCUPIED') or 'None',
-        "last_update": time.strftime("%H:%M:%S"),
     })
 
 
@@ -225,12 +219,12 @@ def main():
     has_update, remote_version = check_for_update(VERSION)
     if has_update and remote_version:
         print(f"Update available: {remote_version} (local {VERSION})")
-        pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION} - Update EXE to {remote_version}")
+        pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION} - Update EXE to {remote_version}")
         update_info = { "remote": remote_version, "local": VERSION }
         show_modal("Update Available", f"A new version ({remote_version}) is available.\nLet a developer know to update this machine.")
     else:
         print("PyATC up-to-date!")
-        pygame.display.set_caption(f"{NAME_MAIN_WINDOW} {VERSION}")
+        pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION}")
         update_info = None
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -248,20 +242,22 @@ def main():
         "cursor_pos": 0,
         "cursor_visible": True,
         "cursor_timer": 0,
-        "show_help": False,
-        "show_perf": False,
-        "show_flight_log": False,
-        "show_error_log": False,
         "conflicts": [],
         "show_update_modal": bool(update_info),
         "update_info": update_info,
         "modal_ok_rect": None, 
+        "fps_avg": 0.0
     }
 
     running = True
     while running:
         dt = 0 if fatal_error else (clock.tick(FPS) / 1000.0) * SIM_SPEED
-        
+        current_fps = clock.get_fps()
+        if "fps_avg" not in state:
+            state["fps_avg"] = current_fps
+        else:
+            state["fps_avg"] = (state["fps_avg"] * 0.9) + (current_fps * 0.1)
+
         if ai_enabled:
             ai_spawn_timer += dt
             if ai_spawn_timer >= AI_SPAWN_INTERVAL_S:
@@ -307,15 +303,6 @@ def main():
             )
         except pygame.error:
             break
-
-        if state["show_error_log"] and fatal_error:
-            render_error_overlay(screen, font, fatal_error)
-        if state["show_help"]:
-            open_detached_window("Help", draw_help_window)
-        if state["show_perf"]:
-            open_detached_window("Performance", draw_performance_menu, state["planes"], state["runways"], SIM_SPEED)
-        if state["show_flight_log"]:
-            open_detached_window(NAME_FLIGHT_LOG, draw_flight_progress_log, state["planes"], layout)
 
         render_console(screen, font, state, layout)
 

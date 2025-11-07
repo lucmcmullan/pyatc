@@ -1,6 +1,15 @@
 import pygame
 import multiprocessing
-from constants import WIDTH, HEIGHT
+from constants import (
+    WIDTH, 
+    HEIGHT,
+    HELP_TEXT,
+    WINDOW_HELP,
+    WINDOW_ERROR,
+    WINDOW_FLIGHT_PROGRESS,
+    WINDOW_PERFORMANCE
+)
+
 from atc.utils import wrap_text, ensure_pygame_ready, calculate_layout
 from multiprocessing.managers import SyncManager, DictProxy
 from multiprocessing.process import BaseProcess
@@ -10,11 +19,6 @@ _manager: Optional[SyncManager] = None
 _shared_state: Optional[DictProxy] = None
 _active_windows: dict[str, BaseProcess] = {}
 
-HELP_TEXT = """
-Help
-Command
-
-"""
 
 def draw_help_window(screen, font, *_, **__):
     layout = calculate_layout(WIDTH, HEIGHT)
@@ -171,7 +175,16 @@ def _window_process(
     pygame.init()
     try:
         # Setup
-        window = pygame.display.set_mode((550, 650), pygame.RESIZABLE)
+        if title == WINDOW_FLIGHT_PROGRESS:
+            window_size = (420, 480)
+        elif title == WINDOW_PERFORMANCE:
+            window_size = (380, 320)
+        elif title == WINDOW_HELP:
+            window_size = (600, 500)
+        elif title == WINDOW_ERROR:
+            window_size = (550, 650)
+
+        window = pygame.display.set_mode(window_size, 0)
         pygame.display.set_caption(f"PyATC - {title}")
         font = pygame.font.SysFont("Consolas", 16)
         clock = pygame.time.Clock()

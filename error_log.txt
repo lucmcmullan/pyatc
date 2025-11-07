@@ -40,3 +40,12 @@ Traceback (most recent call last):
 EOFError: Ran out of input
 
 ------------------------------------------------------------
+[2025-11-07 09:55:41]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 318, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 256, in main
+    clock._fps_avg = current_fps
+AttributeError: 'pygame.time.Clock' object has no attribute '_fps_avg'
+
+------------------------------------------------------------
