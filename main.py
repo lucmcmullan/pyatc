@@ -229,20 +229,30 @@ def main():
     
     pygame.init()
 
+    # --- Dynamic window sizing ---
+    info = pygame.display.Info()
+    screen_w, screen_h = info.current_w, info.current_h
+    PADDING = 120  # pixels of margin around screen edges
+    WIDTH = max(800, screen_w - PADDING)
+    HEIGHT = max(600, screen_h - PADDING)
+
+    # --- Version check & update modal ---
     has_update, remote_version = check_for_update(VERSION)
     if has_update and remote_version:
         print(f"Update available: {remote_version} (local {VERSION})")
         pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION} - Update EXE to {remote_version}")
-        update_info = { "remote": remote_version, "local": VERSION }
+        update_info = {"remote": remote_version, "local": VERSION}
         show_modal("Update Available", f"A new version ({remote_version}) is available.\nLet a developer know to update this machine.")
     else:
         print("PyATC up-to-date!")
         pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION}")
         update_info = None
 
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    # --- Window setup ---
+    screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
     clock = pygame.time.Clock()
 
+    # --- State setup ---
     state = {
         "planes": [spawn_random_plane(i) for i in range(1, INITIAL_PLANE_COUNT + 1)],
         "runways": all_runways(),
@@ -265,12 +275,17 @@ def main():
     running = True
     while running:
         dt = 0 if fatal_error else (clock.tick(FPS) / 1000.0) * SIM_SPEED
-        current_fps = clock.get_fps()
-        if "fps_avg" not in state:
-            state["fps_avg"] = current_fps
-        else:
-            state["fps_avg"] = (state["fps_avg"] * 0.9) + (current_fps * 0.1)
 
+        # Refresh resolution in case user resizes monitor / resolution
+        info = pygame.display.Info()
+        screen_w, screen_h = info.current_w, info.current_h
+        WIDTH = max(800, screen_w - PADDING)
+        HEIGHT = max(600, screen_h - PADDING)
+
+        current_fps = clock.get_fps()
+        state["fps_avg"] = (state.get("fps_avg", current_fps) * 0.9) + (current_fps * 0.1)
+
+        # --- AI traffic ---
         if ai_enabled:
             ai_spawn_timer += dt
             if ai_spawn_timer >= AI_SPAWN_INTERVAL_S:
@@ -278,10 +293,9 @@ def main():
                 p = spawn_random_plane(len(state["planes"]) + 1)
                 p.ai_controlled = True
                 state["planes"].append(p)
-            
             ai.update(state["planes"], state["runways"], dt)
 
-        # Cursor blink timing
+        # --- Cursor blink ---
         state["cursor_timer"] += dt
         if state["cursor_timer"] >= CURSOR_BLINK_SPEED:
             state["cursor_visible"] = not state["cursor_visible"]
@@ -331,4 +345,3 @@ if __name__ == "__main__":
     import multiprocessing
     multiprocessing.freeze_support()  # required on Windows
     main()
-

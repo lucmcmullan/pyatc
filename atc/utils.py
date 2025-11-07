@@ -91,18 +91,40 @@ def load_fixes():
 def calculate_layout(width, height):
     layout = {}
 
-    sidebar_ratio = 0.15
-    sidebar_offset_ratio = 0
-    bottom_margin_ratio = 0.25
-    font_ratio = 0.016 
+    # --- Ratios and proportions ---
+    sidebar_ratio = 0.15          # right-hand comms/log sidebar width
+    bottom_ratio = 0.25           # console occupies bottom 25% of height
+    font_ratio = 0.016            # proportional text size
 
+    # --- Derived sizes ---
     layout["SIDEBAR_WIDTH"] = int(width * sidebar_ratio)
-    layout["SIDEBAR_OFFSET"] = int(width * sidebar_offset_ratio)
     layout["RADAR_WIDTH"] = width - layout["SIDEBAR_WIDTH"]
-    layout["RADAR_CENTER"] = (layout["RADAR_WIDTH"] // 2, height // 2)
-    layout["BOTTOM_MARGIN"] = int(height * bottom_margin_ratio)
+    layout["BOTTOM_MARGIN"] = int(height * bottom_ratio)
     layout["FONT_SIZE"] = max(12, int(height * font_ratio))
-    layout["RING_SCALE"] = layout["RADAR_WIDTH"] / 1500
+
+    # --- Element Anchoring ---
+    # Radar area (main)
+    layout["RADAR_RECT"] = pygame.Rect(0, 0, layout["RADAR_WIDTH"], height - layout["BOTTOM_MARGIN"])
+
+    # Console bar (bottom area)
+    layout["CONSOLE_RECT"] = pygame.Rect(
+        0,
+        height - layout["BOTTOM_MARGIN"],
+        width,
+        layout["BOTTOM_MARGIN"]
+    )
+
+    # Radio/Comms sidebar (sticks to right side)
+    layout["SIDEBAR_RECT"] = pygame.Rect(
+        width - layout["SIDEBAR_WIDTH"],
+        0,
+        layout["SIDEBAR_WIDTH"],
+        height - layout["BOTTOM_MARGIN"]
+    )
+
+    # Useful central references
+    layout["RADAR_CENTER"] = (layout["RADAR_RECT"].centerx, layout["RADAR_RECT"].centery)
+    layout["WINDOW_W"], layout["WINDOW_H"] = width, height
 
     return layout
 
