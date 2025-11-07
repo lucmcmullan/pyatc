@@ -130,3 +130,7 @@
 
         2.1.1 - UI refinements
             - Added ui modals for quick updates
+        
+        2.1.2 - UI, FPS advancements
+            - Removed all references to in-game windows
+            - Converted menus to outside windows
