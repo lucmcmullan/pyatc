@@ -96,7 +96,8 @@ def draw_aircraft(screen, font, plane, active=False):
     screen.blit(text_info, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_INFO))
 
 
-def draw_performance_menu(screen, font, clock, planes, runways, sim_speed):
+def draw_performance_menu(screen, font, planes, runways, sim_speed):
+    clock = pygame.time.Clock()
     fps = int(clock.get_fps())
     cpu_percent = psutil.cpu_percent(interval=None)
     mem = psutil.virtual_memory()

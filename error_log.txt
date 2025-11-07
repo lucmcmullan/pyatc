@@ -11,3 +11,32 @@ Traceback (most recent call last):
 pygame.error: font not initialized
 
 ------------------------------------------------------------
+[2025-11-07 08:58:10]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 320, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 303, in main
+    open_detached_window("Performance", draw_performance_menu, clock, state["planes"], state["runways"], SIM_SPEED)
+  File "D:\Personal\pyatc\atc\ui\window_manager.py", line 152, in open_detached_window
+    proc.start()
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\process.py", line 121, in start
+    self._popen = self._Popen(self)
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\context.py", line 336, in _Popen
+    return Popen(process_obj)
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\popen_spawn_win32.py", line 93, in __init__
+    reduction.dump(process_obj, to_child)
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\reduction.py", line 60, in dump
+    ForkingPickler(file, protocol).dump(obj)
+TypeError: cannot pickle 'pygame.time.Clock' object
+
+------------------------------------------------------------
+[2025-11-07 08:58:10]
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\spawn.py", line 126, in _main
+    self = reduction.pickle.load(from_parent)
+EOFError: Ran out of input
+
+------------------------------------------------------------

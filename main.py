@@ -13,7 +13,7 @@ from atc.objects.aircraft_v2 import spawn_random_plane
 from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_log
 from atc.utils import check_conflicts, calculate_layout, get_current_version, ensure_pygame_ready
 from atc.command_parser import CommandParser
-from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state, show_modal
+from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state, show_modal, draw_help_window
 from constants import (
     WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE,
     INITIAL_PLANE_COUNT, DEFAULT_FONT, CURSOR_BLINK_SPEED,
@@ -62,6 +62,12 @@ def handle_keyboard_input(event, state):
         state["messages"].append("> " + state["input_str"])
         results = parser.parse(state["input_str"], state["planes"])
 
+        if state["input_str"].strip().upper() == "HELP":
+            state["show_help"] = not state["show_help"]
+            state["input_str"] = ""
+            state["cursor_pos"] = 0
+            return
+
         if isinstance(results, list):
             segments = [seg.strip() for seg in state["input_str"].split("|") if seg.strip()]
             for res in results:
@@ -84,6 +90,8 @@ def handle_keyboard_input(event, state):
         state["cursor_pos"] = max(0, state["cursor_pos"] - 1)
     elif key == pygame.K_RIGHT:
         state["cursor_pos"] = min(len(state["input_str"]), state["cursor_pos"] + 1)
+    elif key == pygame.K_F1:
+        state["show_help"] = not state["show_help"]
     elif key == pygame.K_F3:
         state["show_perf"] = not state["show_perf"]
     elif key == pygame.K_F4:
@@ -121,7 +129,6 @@ def handle_mouse_input(event, state, layout, screen, font):
         rects = draw_flight_progress_log(screen, font, state["planes"], layout)
         expand_icon = rects.get("expand_icon") if rects else None
         if expand_icon and expand_icon.collidepoint(event.pos):
-            open_detached_window(NAME_FLIGHT_LOG, draw_flight_progress_log, state["planes"], layout)
             state["show_flight_log"] = False
             return
 
@@ -228,6 +235,7 @@ def main():
         "cursor_pos": 0,
         "cursor_visible": True,
         "cursor_timer": 0,
+        "show_help": False,
         "show_perf": False,
         "show_flight_log": False,
         "show_error_log": False,
@@ -289,10 +297,12 @@ def main():
 
         if state["show_error_log"] and fatal_error:
             render_error_overlay(screen, font, fatal_error)
+        if state["show_help"]:
+            open_detached_window("Help", draw_help_window)
         if state["show_perf"]:
-            draw_performance_menu(screen, font, clock, state["planes"], state["runways"], SIM_SPEED)
+            open_detached_window("Performance", draw_performance_menu, state["planes"], state["runways"], SIM_SPEED)
         if state["show_flight_log"]:
-            draw_flight_progress_log(screen, font, state["planes"], layout)
+            open_detached_window(NAME_FLIGHT_LOG, draw_flight_progress_log, state["planes"], layout)
 
         render_console(screen, font, state, layout)
 

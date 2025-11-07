@@ -1,6 +1,7 @@
 import pygame
 import multiprocessing
-from atc.utils import wrap_text, ensure_pygame_ready
+from constants import WIDTH, HEIGHT
+from atc.utils import wrap_text, ensure_pygame_ready, calculate_layout
 from multiprocessing.managers import SyncManager, DictProxy
 from multiprocessing.process import BaseProcess
 from typing import Any, Dict, Optional, Callable
@@ -8,6 +9,25 @@ from typing import Any, Dict, Optional, Callable
 _manager: Optional[SyncManager] = None
 _shared_state: Optional[DictProxy] = None
 _active_windows: dict[str, BaseProcess] = {}
+
+HELP_TEXT = """
+Help
+Command
+
+"""
+
+def draw_help_window(screen, font, *_, **__):
+    layout = calculate_layout(WIDTH, HEIGHT)
+    screen.fill((15, 15, 25))
+    x, y = 20, 20
+    line_h = int(layout["FONT_SIZE"] * 1.2)
+    for line in HELP_TEXT.strip().splitlines():
+        if not line:
+            y += line_h // 2
+            continue
+        txt = font.render(line, True, (230, 230, 230))
+        screen.blit(txt, (x, y))
+        y += line_h
 
 def show_modal(title: str, message: str, font_name: str = "Consolas", font_size: int = 18):
     """
@@ -109,10 +129,6 @@ def open_detached_window(
     """
     Create and display a new detached Pygame window in a separate process.
 
-    Parameters:
-        title: Window title (used as key for process tracking)
-        draw_func: Function responsible for drawing window content
-        *args, **kwargs: Passed to draw_func
     """
     _ensure_manager()
     kwargs.pop("live", None)
