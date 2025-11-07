@@ -134,3 +134,6 @@
         2.1.2 - UI, FPS advancements
             - Removed all references to in-game windows
             - Converted menus to outside windows
+    
+    2.2.0
+        - Add voice response for aircraft

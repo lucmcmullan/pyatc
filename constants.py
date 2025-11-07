@@ -3,6 +3,8 @@ import pygame
 GH_API = "https://raw.githubusercontent.com/lucmcmullan/pyatc/refs/heads/main/version.txt"
 
 AI_TRAFFIC = False
+RESPONSE_VOICE = True
+
 AI_SPAWN_INTERVAL_S = 30.0
 AI_TRAFFIC_MAX = 10
 AI_DECISION_PERIOD = 3.0
@@ -239,11 +241,33 @@ FUNCTION_KEYS = {
     "errors": pygame.K_F9
 }
 
-# window names
+HELP_TEXT = """\
+BASIC CONTROLS
+    F1 — Open this Help window
+    F3 — Toggle Performance window
+    F4 — Toggle Flight Progress Log
+    ESC — Close detached windows
 
+COMMAND INPUT
+    Enter commands in the bottom console.
+    Commands can be chained using '|'.
+    Example: SPEEDBIRD123 HDG 180 | ALT 5000 | SPD 220
 
-HELP_TEXT = """
-Help
-Command
+COMMON COMMANDS
+    HELP — Show this help window
+    AI — Return selected aircraft to AI control
+    SPD <value> — Set aircraft speed (in knots)
+    HDG <value> — Set aircraft heading (in degrees)
+    ALT <value> — Set altitude (in feet)
+    LAND <runway> — Instruct aircraft to land on a runway
+    TAKEOFF — Begin takeoff if aircraft is on a runway
 
+NOTES
+    Click on aircraft to auto-fill its callsign.
+    Clicking off any aircraft clears selection.
+    Use '|' to sequence multiple instructions.
+    Aircraft acknowledge commands realistically.
+    AI aircraft spawn automatically every 30 s when enabled.\n
+
+PyATC © 2025 Luc McMullan
 """

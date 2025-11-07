@@ -184,11 +184,6 @@ def draw_radar(screen, planes, font, messages, conflicts,
     pygame.draw.rect(screen, COLOUR_SIDEBAR_BG, (sidebar_x, 0, SIDEBAR_WIDTH, HEIGHT))
     pygame.draw.line(screen, COLOUR_SIDEBAR_BORDER, (sidebar_x, 0), (sidebar_x, HEIGHT), 1)
 
-    expand_icon = pygame.Rect(sidebar_x + SIDEBAR_WIDTH - EXPAND_ICON_OFFSET, 5, *EXPAND_ICON_SIZE)
-    pygame.draw.rect(screen, COLOUR_EXPAND_ICON_BG, expand_icon)
-    pygame.draw.line(screen, COLOUR_EXPAND_ICON_X, expand_icon.topleft, expand_icon.bottomright, 2)
-    pygame.draw.line(screen, COLOUR_EXPAND_ICON_X, expand_icon.topright, expand_icon.bottomleft, 2)
-
     # Radio / Log sidebar
     display_plane = selected_plane or next((p for p in planes if p.callsign == active_cs), None)
     if display_plane:
@@ -223,4 +218,4 @@ def draw_radar(screen, planes, font, messages, conflicts,
         screen.blit(font.render("Click a plane to view log", True, COLOUR_MSG_HINT),
                     (sidebar_x + 10, 10))
 
-    return {"expand_icon": expand_icon}
+    return

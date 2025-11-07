@@ -142,6 +142,7 @@ def open_detached_window(
         return
 
     ctx = multiprocessing.get_context("spawn")
+    assert _shared_state is not None, "Shared state not initialized"
     proc = ctx.Process(
         target=_window_process,
         args=(title, draw_func, _shared_state, title) + args,
@@ -189,8 +190,6 @@ def _window_process(
         font = pygame.font.SysFont("Consolas", 16)
         clock = pygame.time.Clock()
 
-        kwargs.pop("live", None)
-
         running = True
         while running:
             for event in pygame.event.get():
@@ -202,8 +201,7 @@ def _window_process(
             snapshot = shared_state_proxy.get(shared_key)
             if snapshot is not None:
                 clean_kwargs = {**kwargs}
-                clean_kwargs.pop("live", None)
-                draw_func(screen=window, font=font, planes_or_snapshot=snapshot, **clean_kwargs, live=True)
+                draw_func(screen=window, font=font, planes_or_snapshot=snapshot, **clean_kwargs)
             else:
                 msg = font.render("Waiting for data sync...", True, (200, 200, 100))
                 window.blit(msg, (20, 20))

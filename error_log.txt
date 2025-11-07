@@ -49,3 +49,14 @@ Traceback (most recent call last):
 AttributeError: 'pygame.time.Clock' object has no attribute '_fps_avg'
 
 ------------------------------------------------------------
+[2025-11-07 11:46:47]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 331, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 319, in main
+    render_clock(screen, font)
+  File "D:\Personal\pyatc\main.py", line 205, in render_clock
+    y = HEIGHT - text.get_height - padding - 5
+TypeError: unsupported operand type(s) for -: 'int' and 'builtin_function_or_method'
+
+------------------------------------------------------------

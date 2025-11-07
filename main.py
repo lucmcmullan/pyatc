@@ -3,11 +3,13 @@ import sys
 import time
 import psutil
 import pygame
+import datetime
 import traceback
 from collections import defaultdict
 from typing import Optional
 
 from update_checker import check_for_update
+from atc.ai.voice import speak
 from atc.ai.controller import AIController
 from atc.objects.runway_v2 import all_runways
 from atc.objects.aircraft_v2 import spawn_random_plane
@@ -18,11 +20,11 @@ from atc.ui.window_manager import open_detached_window, close_all_windows, updat
 from constants import (
     WIDTH, HEIGHT, FPS, SIM_SPEED, ERROR_LOG_FILE,
     INITIAL_PLANE_COUNT, DEFAULT_FONT, CURSOR_BLINK_SPEED,
-    WINDOW_MAIN, FUNCTION_KEYS,
+    WINDOW_MAIN, FUNCTION_KEYS, WINDOW_PERFORMANCE, HELP_TEXT,
     COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT, INITIAL_PLANE_COUNT,
     COLOUR_ERROR_BG, COLOUR_ERROR_HEADER, COLOUR_ERROR_TEXT,
     AI_TRAFFIC, AI_SPAWN_INTERVAL_S, WINDOW_HELP, WINDOW_ERROR,
-    WINDOW_FLIGHT_PROGRESS, WINDOW_PERFORMANCE
+    WINDOW_FLIGHT_PROGRESS, 
 )
 
 
@@ -79,6 +81,7 @@ def handle_keyboard_input(event, state):
                 cs_segment = next((seg for seg in segments if seg.startswith(cs)), state["input_str"])
                 state["radio_log"][cs].append(f"CTRL: {cs_segment}")
                 state["radio_log"][cs].append(f"{cs}: {ack_msg}")
+                speak(ack_msg)
 
         state["input_str"] = ""
         state["cursor_pos"] = 0
@@ -162,12 +165,12 @@ def update_simulation(state, dt):
     state["conflicts"] = check_conflicts(state["planes"])
 
     # Sync with detached windows
-    update_shared_state("Flight Progress Log", [
+    update_shared_state(WINDOW_FLIGHT_PROGRESS, [
         {"callsign": p.callsign, "alt": p.alt, "spd": p.spd, "hdg": p.hdg, "state": p.state}
         for p in state["planes"]
     ])
 
-    update_shared_state("Performance", {
+    update_shared_state(WINDOW_PERFORMANCE, {
         "fps": int(state.get("fps_avg", 0)),
         "sim_speed": SIM_SPEED,
         "cpu_percent": psutil.cpu_percent(interval=None),
@@ -178,7 +181,8 @@ def update_simulation(state, dt):
         "occupied": ', '.join(r.name for r in state["runways"] if r.status == 'OCCUPIED') or 'None',
     })
 
-
+    update_shared_state(WINDOW_HELP, {"title": f"PyATC {VERSION} Help Reference", "text": HELP_TEXT})
+    
 def render_console(screen, font, state, layout):
     """Draw command console at bottom of screen."""
     console_height = int(layout["FONT_SIZE"] * 2.2)
@@ -194,7 +198,16 @@ def render_console(screen, font, state, layout):
         pygame.draw.rect(screen, COLOUR_CONSOLE_TEXT,
                          (prompt_x + cursor_width, bottom_y - 2, 2, font.get_height()))
 
+def render_clock(screen, font):
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S UTC")
 
+    text = font.render(now, True, (0, 255, 0))
+    padding = 10
+    x = WIDTH - text.get_width() - padding
+    y = HEIGHT - text.get_height() - padding + 3
+
+    screen.blit(text, (x, y))
+    
 def render_error_overlay(screen, font, error_text):
     """Display fatal error log overlay."""
     surf = pygame.Surface((WIDTH - 100, HEIGHT - 100), pygame.SRCALPHA)
@@ -305,6 +318,7 @@ def main():
             break
 
         render_console(screen, font, state, layout)
+        render_clock(screen, font)
 
         pygame.display.flip()
 
@@ -317,3 +331,4 @@ if __name__ == "__main__":
     import multiprocessing
     multiprocessing.freeze_support()  # required on Windows
     main()
+

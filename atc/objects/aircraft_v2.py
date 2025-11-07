@@ -4,6 +4,7 @@ from atc.utils import (
     normalize_hdg, heading_to_vec, nm_to_px, calculate_layout,
     get_heading_to_fix, distance_to_fix, load_fixes, shortest_turn_dir, px_to_nm
 )
+from atc.ai.voice import speak
 from constants import (
     WIDTH, HEIGHT, AIRLINES,
     DEFAULT_CLIMB_RATE_FPM, EXPEDITE_CLIMB_RATE_FPM,
@@ -82,6 +83,7 @@ class Aircraft:
                 self.expedite = cmd.extra in ("X", "EX")
             else:
                 self.msg = f"{self.callsign}: invalid altitude '{cmd.value}'"
+            
             return True
 
         elif cmd.type == "HDG":

@@ -27,7 +27,6 @@ def _angle_diff(a: float, b: float) -> float:
     """Return the smallest angular difference between two headings."""
     return min((a - b) % 360, (b - a) % 360)
 
-
 class CommandParser:
     """Handles parsing and processing of ATC-style commands."""
 
