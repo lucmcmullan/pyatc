@@ -1,13 +1,10 @@
-import math, pygame, psutil
+import math, pygame
 from atc.utils import heading_to_vec, load_fixes, nm_to_px, wrap_text, calculate_layout
 from constants import *
 
 def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None):
     if not layout:
         layout = calculate_layout(WIDTH, HEIGHT)
-
-    SIDEBAR_WIDTH = layout["SIDEBAR_WIDTH"]
-    RADAR_WIDTH = layout["RADAR_WIDTH"]
 
     panel_w, panel_h = 400, 440
     surf_w, surf_h = screen.get_size()
@@ -45,7 +42,6 @@ def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None):
         if y > panel_y + panel_h - FPL_ROW_HEIGHT:
             break
 
-    # Legend
     legend_y = panel_y + panel_h - FPL_LEGEND_HEIGHT
     legend = [
         ("Airborne", COLOUR_STATE_AIRBORNE),
@@ -68,35 +64,28 @@ def draw_aircraft(screen, font, plane, active=False, layout=None):
     """
     from atc.utils import scale_position
 
-    # Get layout if not passed
     if layout is None:
         layout = calculate_layout(*screen.get_size())
 
-    # Scale position
     x, y = scale_position(plane.x, plane.y, layout)
     scale = layout["RING_SCALE"]
 
-    # Color based on selection state
     colour = COLOUR_PLANE_ACTIVE if active else COLOUR_PLANE_DEFAULT
 
-    # Scaled icon size
     icon_size = max(2, int(PLANE_ICON_SIZE * scale))
     heading_line_len = int(PLANE_HEADING_LINE_LENGTH * scale)
 
-    # Aircraft square icon
     rect = pygame.Surface((icon_size, icon_size), pygame.SRCALPHA)
     rect.fill(colour)
     rotated = pygame.transform.rotate(rect, -plane.hdg)
     rect_rect = rotated.get_rect(center=(x, y))
     screen.blit(rotated, rect_rect.topleft)
 
-    # Heading line (scaled)
     dx, dy = heading_to_vec(plane.hdg)
     end_x = x + dx * heading_line_len
     end_y = y + dy * heading_line_len
     pygame.draw.line(screen, colour, (x, y), (end_x, end_y), 2)
 
-    # Text labels (scaled positions and consistent font)
     topline_const = f"{plane.callsign} {plane.state}"
     bottomline_const = f"{int(plane.alt)} {int(plane.spd)} {int(plane.hdg)}"
 
@@ -166,30 +155,30 @@ def draw_radar(screen, planes, font, messages, conflicts,
     sidebar_rect = layout["SIDEBAR_RECT"]
     radar_center = layout["RADAR_CENTER"]
 
-    # --- Radar background ---
     screen.fill(COLOUR_RADAR_BG, radar_rect)
 
-    # --- Runways ---
     if runways:
         for rw in runways:
             rw.draw(screen, font)
 
-    # --- Fix rings etc. (no hard-coded WIDTH/HEIGHT) ---
     fixes = load_fixes(layout)
     for name, position in fixes.items():
         x, y = position["x"], position["y"]
         scale = position.get("ring_scale", 1.0)
 
         for nm in range(*RADAR_FIX_RING_SPACING_NM):
-            pixel = int(nm_to_px(nm) * scale)
+            pixel = int(nm_to_px(nm) * layout["RING_SCALE"])
             pygame.draw.circle(screen, COLOUR_FIX_RING, (x, y), pixel, 1)
+
             label = font.render(f"{nm}", True, COLOUR_FIX_TEXT)
-            screen.blit(label, (x + pixel + 4, y - int(8 * scale)))
+            label_offset = int(8 * layout["RING_SCALE"])
+            screen.blit(label, (x + pixel + 4, y - label_offset))
 
         for deg in range(0, 360, RADAR_HEADING_INTERVAL_DEG):
-            rad = math.radians(deg)
-            dx = math.sin(rad) * nm_to_px(RADAR_LINE_RANGE_NM) * scale
-            dy = -math.cos(rad) * nm_to_px(RADAR_LINE_RANGE_NM) * scale
+            rad = math.radians(deg) 
+            length = nm_to_px(RADAR_LINE_RANGE_NM) * layout["RING_SCALE"]
+            dx = math.sin(rad) * length
+            dy = -math.cos(rad) * length
             pygame.draw.line(screen, (60, 60, 120), (x, y), (x + dx, y + dy))
 
         pygame.draw.circle(screen, COLOUR_FIX_CENTER_OUTER, (x, y), int(5 * scale))
@@ -197,12 +186,10 @@ def draw_radar(screen, planes, font, messages, conflicts,
         name_txt = font.render(name, True, COLOUR_FIX_LABEL)
         screen.blit(name_txt, (x + int(10 * scale), y - int(10 * scale)))
 
-    # --- Radar rings ---
     scale = layout["RING_SCALE"]
     for radius in range(RADAR_RING_SPACING, RADAR_RING_MAX_RADIUS, RADAR_RING_SPACING):
         pygame.draw.circle(screen, COLOUR_RADAR_GRID, RADAR_CENTER, int(radius * scale), 1)
 
-    # Crosshairs constrained to radar rect
     pygame.draw.line(
         screen,
         COLOUR_RADAR_GRID,
@@ -218,11 +205,9 @@ def draw_radar(screen, planes, font, messages, conflicts,
         1,
     )
 
-    # --- Aircraft ---
     for plane in planes:
         draw_aircraft(screen, font, plane, active=(plane.callsign == active_cs))
 
-    # --- Conflicts (top-left of radar area) ---
     cy = radar_rect.top + 5
     for a, b, lat, vert in conflicts:
         msg = f"CONFLICT {a.callsign}-{b.callsign} {lat:.1f}NM {vert:.0f}FT"
@@ -230,7 +215,6 @@ def draw_radar(screen, planes, font, messages, conflicts,
                     (radar_rect.left + 5, cy))
         cy += 18
 
-    # --- Sidebar / Radio log (LEFT, pinned) ---
     pygame.draw.rect(screen, COLOUR_SIDEBAR_BG, sidebar_rect)
     pygame.draw.line(
         screen,
@@ -268,7 +252,6 @@ def draw_radar(screen, planes, font, messages, conflicts,
                     screen.blit(font.render(wrapped, True, color), (x0, y))
                     y += 18
 
-            # Scrollbar
             if len(log) > max_lines:
                 total = len(log) - max_lines
                 bar_area_h = sidebar_rect.height - 80
@@ -285,13 +268,11 @@ def draw_radar(screen, planes, font, messages, conflicts,
     else:
         msg = "Click a plane to view log"
         max_width = sidebar_rect.width - 20
-        # Try reducing font size if message won't fit
         msg_font = font
         while msg_font.size(msg)[0] > max_width and msg_font.get_height() > 10:
             new_size = int(msg_font.get_height() * 0.9)
             msg_font = pygame.font.SysFont(DEFAULT_FONT, new_size)
 
-        # Wrap text if needed
         lines = wrap_text(msg, msg_font, max_width)
 
         y = sidebar_rect.y + 10

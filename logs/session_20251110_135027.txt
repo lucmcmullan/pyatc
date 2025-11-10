@@ -1,0 +1,3 @@
+[13:50:33] W9350: Climb and maintain flight level nine zero zero, Wizz Go 350
+[13:50:40] W9350: Descend and maintain eight thousand, Wizz Go 350
+[13:50:48] RK678: Turn left heading two seven zero, Bluemax 678

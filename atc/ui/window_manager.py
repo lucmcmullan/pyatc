@@ -15,9 +15,6 @@ _manager: Optional[SyncManager] = None
 _shared_state: Optional[DictProxy] = None
 _active_windows: dict[str, BaseProcess] = {}
 
-# ==============================================================
-# 🧭 HELP WINDOW DRAW
-# ==============================================================
 def draw_help_window(screen, font, *_, **__):
     layout = calculate_layout(WIDTH, HEIGHT)
     screen.fill((15, 15, 25))
@@ -31,10 +28,6 @@ def draw_help_window(screen, font, *_, **__):
         screen.blit(txt, (x, y))
         y += line_h
 
-
-# ==============================================================
-# 🪟 MODAL POPUP
-# ==============================================================
 def _modal_process(title: str, message: str, font_name: str, font_size: int):
     """Run a simple blocking modal window in a separate process.
 
@@ -42,7 +35,6 @@ def _modal_process(title: str, message: str, font_name: str, font_size: int):
     """
     pygame.init()
 
-    # Modal size (fixed; independent of main window)
     modal_w, modal_h = 480, 240
     screen = pygame.display.set_mode((modal_w, modal_h))
     pygame.display.set_caption(title)
@@ -109,11 +101,7 @@ def show_modal(title: str, message: str, font_name: str = "Consolas", font_size:
         daemon=True,
     )
     proc.start()
-    #proc.join()
 
-# ==============================================================
-# 🔄 MULTIPROCESS MANAGER
-# ==============================================================
 def _ensure_manager() -> None:
     global _manager, _shared_state
     if _manager is None:
@@ -133,10 +121,6 @@ def get_shared_state(key: str) -> Any:
     assert _shared_state is not None
     return _shared_state.get(key)
 
-
-# ==============================================================
-# 🪟 OPEN DETACHED WINDOW
-# ==============================================================
 def open_detached_window(
     title: str,
     draw_func: Callable[..., Any],
@@ -170,10 +154,6 @@ def close_all_windows() -> None:
             proc.terminate()
     _active_windows.clear()
 
-
-# ==============================================================
-# 🧩 DETACHED WINDOW LOOP
-# ==============================================================
 def _window_process(
     title: str,
     draw_func: Callable[..., None],
@@ -186,7 +166,6 @@ def _window_process(
     info = pygame.display.Info()
     screen_w, screen_h = info.current_w, info.current_h
 
-    # --- Dynamic scaling per window type ---
     if title == WINDOW_FLIGHT_PROGRESS:
         window_size = (int(screen_w * 0.35), int(screen_h * 0.55))
     elif title == WINDOW_PERFORMANCE:
@@ -198,10 +177,6 @@ def _window_process(
     else:
         window_size = (int(screen_w * 0.4), int(screen_h * 0.5))
 
-    # Center the window on the screen
-    x = (screen_w - window_size[0]) // 2
-    y = (screen_h - window_size[1]) // 2
-    os_env = pygame.display.get_wm_info()
     pygame.display.set_mode(window_size, pygame.NOFRAME)
     window = pygame.display.set_mode(window_size, 0)
     pygame.display.set_caption(f"PyATC - {title}")

@@ -82,7 +82,7 @@ class CommandParser:
         while i < len(tokens):
             token = tokens[i]
 
-            if token == "C":  # Control
+            if token == "C":
                 i += 1
                 if i >= len(tokens):
                     break
@@ -91,43 +91,40 @@ class CommandParser:
                 if extra:
                     i += 1
 
-                # Heading
                 if arg.isdigit() and len(arg) == 3:
                     cmds.append(Command("HDG", arg, extra))
                     turn = "left " if extra == "L" else "right " if extra == "R" else ""
                     ack_segments.append(f"turn {turn}heading {convert_to_phraseology(int(arg), 'heading')}")
 
-                # Altitude
                 elif arg.isdigit():
                     cmds, ack = self._handle_altitude_command(aircraft, arg, extra)
                     ack_segments.append(ack)
 
-                # Navigation fix
                 else:
                     cmds.append(Command("NAV", arg, extra))
                     ack_segments.append(f"cleared direct {arg}")
 
-            elif token == "S":  # Speed
+            elif token == "S":
                 if i + 1 < len(tokens):
                     spd = tokens[i + 1]
                     cmds.append(Command("SPD", spd))
                     ack_segments.append(f"speed {convert_to_phraseology(int(spd), 'speed')}")
                     i += 1
 
-            elif token == "H":  # Hold
+            elif token == "H":
                 fix = tokens[i + 1] if i + 1 < len(tokens) else None
                 cmds.append(Command("HOLD", fix))
                 ack_segments.append(MSG_HOLD_FIX.format(fix=fix) if fix else MSG_HOLD_POS)
                 if fix:
                     i += 1
 
-            elif token == "T":  # Takeoff
+            elif token == "T":
                 ack, new_cmds, skip = self._handle_takeoff(tokens, i, aircraft)
                 ack_segments.append(ack)
                 cmds.extend(new_cmds)
                 i += skip
 
-            elif token == "L":  # Land
+            elif token == "L":
                 ack, new_cmds, skip = self._handle_landing(tokens, i, aircraft)
                 ack_segments.append(ack)
                 cmds.extend(new_cmds)

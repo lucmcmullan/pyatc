@@ -12,16 +12,13 @@ def get_current_version() -> str:
     """Return app version from version.txt (works both frozen and unfrozen)."""
     try:
         if getattr(sys, 'frozen', False):
-            # Running as a PyInstaller EXE
             base_path = sys._MEIPASS
         else:
-            # Running from source — use project root, not this file's folder
             base_path = os.path.dirname(os.path.abspath(sys.argv[0]))
 
         version_path = os.path.join(base_path, "version.txt")
 
         if not os.path.exists(version_path):
-            # Fallback to project root (in case running from submodule)
             version_path = os.path.join(os.path.dirname(base_path), "version.txt")
 
         with open(version_path, "r", encoding="utf-8") as f:
@@ -39,9 +36,8 @@ def shortest_turn_dir(a, b): return 1 if (b - a + 360) % 360 <= 180 else -1
 def get_callsign_from_iata(callsign: str) -> str:
     from constants import AIRLINES
 
-    # First two characters are always the IATA prefix
     prefix = callsign[:2].upper()
-    number = callsign[2:].lstrip("0")  # remove leading zeros for realism
+    number = callsign[2:].lstrip("0")
 
     for airline, data in AIRLINES.items():
         if prefix == data["IATA"].upper():
@@ -79,7 +75,6 @@ def load_fixes(layout: dict | None = None):
     radar_width = layout["RADAR_WIDTH"]
     radar_height = layout["RADAR_HEIGHT"]
 
-    # Scale relative to the original WIDTH/HEIGHT proportions
     scale_x = radar_width / WIDTH
     scale_y = radar_height / HEIGHT
 
@@ -94,24 +89,31 @@ def load_fixes(layout: dict | None = None):
 def calculate_layout(width: int, height: int) -> dict:
     """Generate a responsive, scale-aware layout for PyATC."""
 
-    # --- Scaling ratios ---
-    sidebar_ratio = 0.18               # Sidebar width = 18% of screen width
-    console_ratio = 0.10               # Console height = 10% of screen height
-    font_ratio = 0.022                 # Font scales with height
-    ring_scale_base = 1500             # Used to scale radar range rings
+    sidebar_ratio = 0.18
+    console_ratio = 0.07
+    font_ratio_base = 0.022
+    ring_scale_base = 1500
 
-    # --- Derived dimensions ---
     sidebar_width = int(width * sidebar_ratio)
     console_height = max(40, int(height * console_ratio))
-    font_size = max(12, int(height * font_ratio))
 
-    # --- Rectangles ---
+    # === Multi-font scaling with independent caps ===
+    font_size_radar = max(12, int(height * font_ratio_base * 1.0))
+    font_size_sidebar = max(12, int(height * font_ratio_base * 0.9))
+    font_size_console = max(12, int(height * font_ratio_base * 1.1))
+
+    MAX_RADAR_FONT = 26
+    MAX_SIDEBAR_FONT = 24
+    MAX_CONSOLE_FONT = 28
+
+    font_size_radar = min(font_size_radar, MAX_RADAR_FONT)
+    font_size_sidebar = min(font_size_sidebar, MAX_SIDEBAR_FONT)
+    font_size_console = min(font_size_console, MAX_CONSOLE_FONT)
+
     sidebar_rect = pygame.Rect(width - sidebar_width, 0, sidebar_width, height - console_height)
     radar_rect = pygame.Rect(0, 0, width - sidebar_width, height - console_height)
     console_rect = pygame.Rect(0, height - console_height, width, console_height)
 
-    # --- Scale factor for radar elements ---
-    # Keeps radar range circles proportional to available radar width
     ring_scale = radar_rect.width / ring_scale_base
 
     layout = {
@@ -123,8 +125,13 @@ def calculate_layout(width: int, height: int) -> dict:
         "RADAR_WIDTH": radar_rect.width,
         "RADAR_HEIGHT": radar_rect.height,
         "BOTTOM_MARGIN": console_height,
-        "FONT_SIZE": font_size,
         "RING_SCALE": ring_scale,
+
+        "FONT_SIZE_RADAR": font_size_radar,
+        "FONT_SIZE_SIDEBAR": font_size_sidebar,
+        "FONT_SIZE_CONSOLE": font_size_console,
+
+        "FONT_SIZE": font_size_radar,
     }
 
     return layout

@@ -105,8 +105,7 @@
             - Implemented backspace hold for continuous delete
             - Auto-switch log to last contacted aircraft
             - Added fatal error logging & handling
-            - Added performance overlay (F3) with system metrics
-            - Added detached windows for modular displays (F4, etc.)
+            - Added performance overlay with system metrics
             - Improved multiprocessing and state synchronisation
 
     1.7.0 - Auto-versioning
@@ -143,9 +142,14 @@
     
     2.2.0
         - Add voice response for all aircraft (not just AI)
+        - Implemented multiple aircraft to speak at once
 
         2.2.1 - Modal updates
             - Added modals to toggle voice and AI
             - Removed blocking from modals
+        
+        2.2.2 - Bug fixes
+            - Fixed bug not being able to click aircraft
+            - Fixed ability to hold backspace/unicode character in console
+            - Finalised some UI scaling
 
-    

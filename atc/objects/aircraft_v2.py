@@ -62,7 +62,6 @@ class Aircraft:
         self._alt_start = self.alt
         self._alt_target = self.dest_alt
 
-    # --- altitude control ---
     def set_altitude_target(self, target_alt: int):
         self._alt_start = self.alt
         self._alt_target = target_alt
@@ -70,11 +69,9 @@ class Aircraft:
 
         delta = abs(target_alt - self.alt)
         max_climb_rate = DEFAULT_CLIMB_RATE_FPM if not self.expedite else EXPEDITE_CLIMB_RATE_FPM
-        avg_rate = max_climb_rate * ALTITUDE_SMOOTHING_FACTOR
         self._alt_duration = max(ALTITUDE_INTERPOLATION_MIN_DURATION, (delta / 1000) * 0.5) if delta > 0 else 1.0
         self._alt_stabilise_start = None
 
-    # --- command execution ---
     def execute_command(self, cmd: Command, dt) -> bool:
         layout = calculate_layout(WIDTH, HEIGHT)
         assert cmd.value is not None
@@ -167,7 +164,6 @@ class Aircraft:
             if done:
                 self.command_queue.pop(0)
 
-        # altitude interpolation
         if self._alt_start_time is not None:
             elapsed = time.time() - self._alt_start_time
             self._alt_duration = max(self._alt_duration, ALTITUDE_INTERPOLATION_MIN_DURATION)
@@ -177,7 +173,6 @@ class Aircraft:
             factor = 3 * t_adj**2 - 2 * t_adj**3
             self.alt = self._alt_start + (self._alt_target - self._alt_start) * factor
 
-            # stabilisation oscillation
             if t >= 1.0:
                 if self._alt_stabilise_start is None:
                     self._alt_stabilise_start = time.time()
@@ -196,11 +191,9 @@ class Aircraft:
             elif self.alt > self.dest_alt:
                 self.alt = max(self.dest_alt, self.alt - rate * dt / 60)
 
-        # heading control
         if self.dest_hdg is not None:
             self.turn_towards(self.dest_hdg, dt)
 
-        # speed control
         if self.dest_spd:
             diff = self.dest_spd - self.spd
             self.spd += max(min(diff, SPEED_CHANGE_RATE_KTS_PER_SEC * dt), -SPEED_CHANGE_RATE_KTS_PER_SEC * dt)
@@ -208,14 +201,12 @@ class Aircraft:
         if self.state in ("LANDING", "LANDED") and self.alt <= 20:
             self.spd = max(0, self.spd - LANDING_DECEL_RATE_KTS_PER_SEC * dt)
 
-        # movement
         dx, dy = heading_to_vec(self.hdg)
         nmps = self.spd / 3600.0
         pxps = nm_to_px(nmps)
         self.x += dx * pxps * dt
         self.y += dy * pxps * dt
 
-        # takeoff / landing transitions
         if self.current_runway:
             if self.state == "TAKEOFF":
                 if self.alt >= TAKEOFF_RELEASE_ALT_FT or (

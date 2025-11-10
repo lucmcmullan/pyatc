@@ -23,18 +23,14 @@ _AIRPORTS: list["Airport"] = []
 
 def _build_runways():
     layout = calculate_layout(WIDTH, HEIGHT)
-    radar_width = layout["RADAR_WIDTH"]
-    radar_height = HEIGHT
 
     base_runways = load_runways()
 
-    # Group runways by bearing
     bearing_groups: dict[int, list[dict]] = {}
     for rw in base_runways:
         bearing = int(round(rw["bearing"] / 10.0)) * 10
         bearing_groups.setdefault(bearing, []).append(rw)
 
-    # Assign suffixes (L/R, A/B/C...)
     for bearing, runways in bearing_groups.items():
         count = len(runways)
         if count == 2:
@@ -51,7 +47,7 @@ def _build_runways():
         bearing = rw["bearing"]
         length_nm = rw.get("length_nm", RUNWAY_DEFAULT_LENGTH_NM)
         layout = calculate_layout(WIDTH, HEIGHT)
-        scale = layout["RING_SCALE"]  # proportional to radar width
+        scale = layout["RING_SCALE"]
         half_len = nm_to_px(length_nm / 2) * scale
         cx, cy = scale_position(int(rw["x"] * WIDTH), int(rw["y"] * HEIGHT), layout)
         dx, dy = heading_to_vec(bearing)
@@ -91,7 +87,7 @@ class Runway:
     bearing: int = normalize_hdg(90)
     length_nm: float = RUNWAY_DEFAULT_LENGTH_NM
     active_aircraft: Optional["Aircraft"] = None
-    status: str = RUNWAY_DEFAULT_STATUS  # AVAILABLE, OCCUPIED, CLOSED
+    status: str = RUNWAY_DEFAULT_STATUS
     last_used: float = 0.0
     airport: Optional["Airport"] = None
 
@@ -143,7 +139,6 @@ class Runway:
         screen.blit(text_a, (self.start[0] + label_offset_x, self.start[1] + label_offset_y))
         screen.blit(text_b, (self.end[0] - 20, self.end[1] + label_offset_x))
 
-        # Runway name label
         name_text = font.render(self.name, True, COLOUR_RUNWAY_LABEL)
         screen.blit(name_text, (self.x + name_offset_x, self.y + name_offset_y))
 
