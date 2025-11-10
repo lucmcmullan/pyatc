@@ -1,5 +1,5 @@
 import dataclasses, pygame, time
-from atc.utils import normalize_hdg, heading_to_vec, nm_to_px, calculate_layout, load_runways
+from atc.utils import normalize_hdg, heading_to_vec, nm_to_px, calculate_layout, load_runways, scale_position
 from constants import (
     HEIGHT, WIDTH,
     COLOUR_RUNWAY_BASE, COLOUR_RUNWAY_AVAILABLE, COLOUR_RUNWAY_OCCUPIED, COLOUR_RUNWAY_CLOSED,
@@ -50,8 +50,10 @@ def _build_runways():
     for rw in base_runways:
         bearing = rw["bearing"]
         length_nm = rw.get("length_nm", RUNWAY_DEFAULT_LENGTH_NM)
-        half_len = nm_to_px(length_nm / 2)
-        cx, cy = int(rw["x"] * radar_width), int(rw["y"] * radar_height)
+        layout = calculate_layout(WIDTH, HEIGHT)
+        scale = layout["RING_SCALE"]  # proportional to radar width
+        half_len = nm_to_px(length_nm / 2) * scale
+        cx, cy = scale_position(int(rw["x"] * WIDTH), int(rw["y"] * HEIGHT), layout)
         dx, dy = heading_to_vec(bearing)
         start = (cx - dx * half_len, cy - dy * half_len)
         end = (cx + dx * half_len, cy + dy * half_len)
@@ -110,30 +112,40 @@ class Runway:
         self.last_used = time.time()
 
     def draw(self, screen, font):
-        # Base line
-        pygame.draw.line(screen, COLOUR_RUNWAY_BASE, self.start, self.end, RUNWAY_BASE_WIDTH)
+        layout = calculate_layout(*screen.get_size())
+        scale = layout["RING_SCALE"]
 
-        # Active overlay
+        base_w = max(1, int(RUNWAY_BASE_WIDTH * scale))
+        active_w = max(1, int(RUNWAY_ACTIVE_WIDTH * scale))
+
+        pygame.draw.line(screen, COLOUR_RUNWAY_BASE, self.start, self.end, base_w)
+
         if self.status == RUNWAY_OCCUPIED_STATUS:
             colour = COLOUR_RUNWAY_OCCUPIED
         elif self.status == RUNWAY_CLOSED_STATUS:
             colour = COLOUR_RUNWAY_CLOSED
         else:
             colour = COLOUR_RUNWAY_AVAILABLE
-        pygame.draw.line(screen, colour, self.start, self.end, RUNWAY_ACTIVE_WIDTH)
+            
+        pygame.draw.line(screen, colour, self.start, self.end, active_w)
 
-        # Runway number markings
+        label_offset_x = int(RUNWAY_LABEL_OFFSET_X * scale)
+        label_offset_y = int(RUNWAY_LABEL_OFFSET_Y * scale)
+        name_offset_x = int(RUNWAY_NAME_OFFSET_X * scale)
+        name_offset_y = int(RUNWAY_NAME_OFFSET_Y * scale)
+
         label_a = f"{int(round(self.bearing / 10)) % 36:02d}"
         label_b = f"{int(round(self.opposite_bearing / 10)) % 36:02d}"
 
         text_a = font.render(label_a, True, colour)
         text_b = font.render(label_b, True, colour)
-        screen.blit(text_a, (self.start[0] + RUNWAY_LABEL_OFFSET_X, self.start[1] + RUNWAY_LABEL_OFFSET_Y))
-        screen.blit(text_b, (self.end[0] - 20, self.end[1] + RUNWAY_LABEL_OFFSET_Y))
+
+        screen.blit(text_a, (self.start[0] + label_offset_x, self.start[1] + label_offset_y))
+        screen.blit(text_b, (self.end[0] - 20, self.end[1] + label_offset_x))
 
         # Runway name label
         name_text = font.render(self.name, True, COLOUR_RUNWAY_LABEL)
-        screen.blit(name_text, (self.x + RUNWAY_NAME_OFFSET_X, self.y + RUNWAY_NAME_OFFSET_Y))
+        screen.blit(name_text, (self.x + name_offset_x, self.y + name_offset_y))
 
 
 def build_airports():

@@ -35,15 +35,18 @@ def draw_help_window(screen, font, *_, **__):
 # ==============================================================
 # 🪟 MODAL POPUP
 # ==============================================================
-def show_modal(title: str, message: str, font_name: str = "Consolas", font_size: int = 18):
-    """Display a blocking modal dialog with an OK button."""
-    ensure_pygame_ready()
-    info = pygame.display.Info()
-    screen_w, screen_h = info.current_w, info.current_h
-    modal_w, modal_h = 480, 240
+def _modal_process(title: str, message: str, font_name: str, font_size: int):
+    """Run a simple blocking modal window in a separate process.
 
+    This process has its own pygame.display, so it does NOT affect the main sim window.
+    """
+    pygame.init()
+
+    # Modal size (fixed; independent of main window)
+    modal_w, modal_h = 480, 240
     screen = pygame.display.set_mode((modal_w, modal_h))
     pygame.display.set_caption(title)
+
     clock = pygame.time.Clock()
     font = pygame.font.SysFont(font_name, font_size)
 
@@ -62,12 +65,15 @@ def show_modal(title: str, message: str, font_name: str = "Consolas", font_size:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
+            elif event.type == pygame.KEYDOWN and event.key in (
+                pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE
+            ):
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and btn_rect.collidepoint(event.pos):
                 running = False
 
         screen.fill(COLOUR_BG)
+
         title_text = font.render(title, True, COLOUR_TEXT)
         screen.blit(title_text, (30, 30))
 
@@ -81,14 +87,29 @@ def show_modal(title: str, message: str, font_name: str = "Consolas", font_size:
         mouse = pygame.mouse.get_pos()
         hover = btn_rect.collidepoint(mouse)
         pygame.draw.rect(screen, COLOUR_BTN_BG_HOVER if hover else COLOUR_BTN_BG, btn_rect, border_radius=6)
+
         ok_text = font.render("OK", True, COLOUR_TEXT)
-        screen.blit(ok_text, (btn_x + (btn_w - ok_text.get_width()) // 2, btn_y + (btn_h - ok_text.get_height()) // 2))
+        screen.blit(
+            ok_text,
+            (btn_x + (btn_w - ok_text.get_width()) // 2,
+             btn_y + (btn_h - ok_text.get_height()) // 2),
+        )
 
         pygame.display.flip()
         clock.tick(60)
 
-    pygame.display.quit()
+    pygame.quit()
 
+def show_modal(title: str, message: str, font_name: str = "Consolas", font_size: int = 18):
+    """Blocking modal that runs in a separate process without modifying the main window."""
+    ctx = multiprocessing.get_context("spawn")
+    proc = ctx.Process(
+        target=_modal_process,
+        args=(title, message, font_name, font_size),
+        daemon=True,
+    )
+    proc.start()
+    #proc.join()
 
 # ==============================================================
 # 🔄 MULTIPROCESS MANAGER

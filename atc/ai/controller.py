@@ -5,7 +5,7 @@ from typing import List
 
 from atc.objects.command import Command
 from .quadtree import Quadtree
-from atc.utils import load_fixes, get_heading_to_fix, nm_to_px
+from atc.utils import load_fixes, get_heading_to_fix, nm_to_px, calculate_layout
 from constants import (
     WIDTH, HEIGHT, SAFE_LAT_NM,
     AI_DECISION_PERIOD, AI_DECONFLICT_TURN,
@@ -13,9 +13,11 @@ from constants import (
     AI_LANDING_SPEED
 )
 
+layout = calculate_layout(WIDTH, HEIGHT)
+
 class AIController:
     def __init__(self):
-        self._fix_names = list(load_fixes().keys()) or []
+        self._fix_names = list(load_fixes(layout).keys()) or []
 
     def update(self, planes: List, runways: List, dt: float):
         if not planes:

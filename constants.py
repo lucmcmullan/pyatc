@@ -2,9 +2,11 @@ import pygame
 
 GH_API = "https://raw.githubusercontent.com/lucmcmullan/pyatc/refs/heads/main/version.txt"
 
+#bools
 AI_TRAFFIC = False
-RESPONSE_VOICE = True
+RESPONSE_VOICE = False
 
+#settings
 AI_SPAWN_INTERVAL_S = 30.0
 AI_TRAFFIC_MAX = 10
 AI_DECISION_PERIOD = 3.0
@@ -236,17 +238,21 @@ AIRPORT_DEFAULT_NAME = "Airport1"
 
 FUNCTION_KEYS = {
     "help": pygame.K_F1,
-    "performance": pygame.K_F3,
-    "flight_progress": pygame.K_F4,
-    "errors": pygame.K_F9
+    "performance": pygame.K_F2,
+    "flight_progress": pygame.K_F3,
+    "ai_mode": pygame.K_F4,
+    "voice_response": pygame.K_F5,
+    "errors": pygame.K_F12
 }
 
 HELP_TEXT = """\
 BASIC CONTROLS
-    F1 — Open this Help window
-    F3 — Toggle Performance window
-    F4 — Toggle Flight Progress Log
-    ESC — Close detached windows
+    F1 - Open this Help window
+    F2 - Open Performance window
+    F3 - Open Flight Progress Log
+    F4 - Toggle AI simulated planes
+    F5 - Toggle voice responses
+    ESC - Close detached windows
 
 COMMAND INPUT
     Enter commands in the bottom console.
@@ -254,13 +260,13 @@ COMMAND INPUT
     Example: SPEEDBIRD123 HDG 180 | ALT 5000 | SPD 220
 
 COMMON COMMANDS
-    HELP — Show this help window
-    AI — Return selected aircraft to AI control
-    SPD <value> — Set aircraft speed (in knots)
-    HDG <value> — Set aircraft heading (in degrees)
-    ALT <value> — Set altitude (in feet)
-    LAND <runway> — Instruct aircraft to land on a runway
-    TAKEOFF — Begin takeoff if aircraft is on a runway
+    HELP - Show this help window
+    AI - Return selected aircraft to AI control
+    SPD <value> - Set aircraft speed (in knots)
+    HDG <value> - Set aircraft heading (in degrees)
+    ALT <value> - Set altitude (in feet)
+    LAND <runway> - Instruct aircraft to land on a runway
+    TAKEOFF - Begin takeoff if aircraft is on a runway
 
 NOTES
     Click on aircraft to auto-fill its callsign.

@@ -24,7 +24,7 @@ from constants import (
     COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT, INITIAL_PLANE_COUNT,
     COLOUR_ERROR_BG, COLOUR_ERROR_HEADER, COLOUR_ERROR_TEXT,
     AI_TRAFFIC, AI_SPAWN_INTERVAL_S, WINDOW_HELP, WINDOW_ERROR,
-    WINDOW_FLIGHT_PROGRESS, 
+    WINDOW_FLIGHT_PROGRESS, RESPONSE_VOICE
 )
 
 
@@ -58,7 +58,10 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 sys.excepthook = handle_exception
 
 def handle_keyboard_input(event, state):
-    layout = calculate_layout(WIDTH, HEIGHT)
+    info = pygame.display.Info()
+
+    layout = calculate_layout(info.current_w, info.current_h)
+
     """Process all keyboard input events."""
     key = event.key
 
@@ -102,6 +105,13 @@ def handle_keyboard_input(event, state):
         open_detached_window(WINDOW_PERFORMANCE, draw_performance_menu, state["planes"], state["runways"], SIM_SPEED)
     elif key == FUNCTION_KEYS["flight_progress"]:
         open_detached_window(WINDOW_FLIGHT_PROGRESS, draw_flight_progress_log, state["planes"], layout)
+    elif key == FUNCTION_KEYS["ai_mode"]:
+        state["ai_enabled"] = not state["ai_enabled"]
+        show_modal("AI Mode", f"AI Mode {'Enabled' if state['ai_enabled'] else 'Disabled'}")
+    elif key == FUNCTION_KEYS["voice_response"]:
+        state["voice_enabled"] = not state["voice_enabled"]
+        show_modal("Voice Response", f"Voice Response {'Enabled' if state['voice_enabled'] else 'Disabled'}")
+
     elif key == FUNCTION_KEYS["errors"]:
         if fatal_error:
             show_modal(WINDOW_ERROR, fatal_error)
@@ -147,7 +157,6 @@ def handle_mouse_input(event, state, layout, screen, font):
             state["input_str"] = ""
             state["cursor_pos"] = 0
 
-    # Scroll log
     elif event.button == 4:
         state["radio_scroll"] = max(0, state["radio_scroll"] - 1)
     elif event.button == 5:
@@ -164,7 +173,6 @@ def update_simulation(state, dt):
 
     state["conflicts"] = check_conflicts(state["planes"])
 
-    # Sync with detached windows
     update_shared_state(WINDOW_FLIGHT_PROGRESS, [
         {"callsign": p.callsign, "alt": p.alt, "spd": p.spd, "hdg": p.hdg, "state": p.state}
         for p in state["planes"]
@@ -184,59 +192,65 @@ def update_simulation(state, dt):
     update_shared_state(WINDOW_HELP, {"title": f"PyATC {VERSION} Help Reference", "text": HELP_TEXT})
     
 def render_console(screen, font, state, layout):
-    """Draw command console at bottom of screen."""
-    console_height = int(layout["FONT_SIZE"] * 2.2)
-    bottom_y = HEIGHT - console_height + int(layout["FONT_SIZE"] * 0.5)
-    prompt_x = int(layout["FONT_SIZE"] * 0.5)
+    """Draw command console anchored to bottom, stretched to width."""
+    rect = layout["CONSOLE_RECT"]
 
-    pygame.draw.rect(screen, COLOUR_CONSOLE_BG, (0, HEIGHT - console_height, WIDTH, console_height))
-    txt = font.render(f"> {state['input_str']}", True, COLOUR_CONSOLE_TEXT)
-    screen.blit(txt, (prompt_x, bottom_y))
+    pygame.draw.rect(screen, COLOUR_CONSOLE_BG, rect)
+
+    prompt = f"> {state['input_str']}"
+    txt = font.render(prompt, True, COLOUR_CONSOLE_TEXT)
+    text_y = rect.y + (rect.height - txt.get_height()) // 2
+    screen.blit(txt, (rect.x + 10, text_y))
 
     if state["cursor_visible"]:
-        cursor_width = font.render(f"> {state['input_str'][:state['cursor_pos']]}", True, COLOUR_CONSOLE_TEXT).get_width()
-        pygame.draw.rect(screen, COLOUR_CONSOLE_TEXT,
-                         (prompt_x + cursor_width, bottom_y - 2, 2, font.get_height()))
+        before = f"> {state['input_str'][:state['cursor_pos']]}"
+        cursor_x = rect.x + 10 + font.size(before)[0]
+        cursor_y = text_y
+        pygame.draw.rect(
+            screen,
+            COLOUR_CONSOLE_TEXT,
+            (cursor_x, cursor_y, 2, txt.get_height() - 2),
+        )
 
-def render_clock(screen, font):
+def render_clock(screen):
+    import datetime
+    from constants import DEFAULT_FONT
+
+    # Get dynamic screen size (not constants)
+    window_w, window_h = screen.get_size()
+
+    # Scale font size relative to window height (2.5% baseline)
+    scaled_size = max(12, int(window_h * 0.025))
+    font = pygame.font.SysFont(DEFAULT_FONT, scaled_size)
+
+    # Render clock text
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S UTC")
-
     text = font.render(now, True, (0, 255, 0))
-    padding = 10
-    x = WIDTH - text.get_width() - padding
-    y = HEIGHT - text.get_height() - padding + 3
+
+    # Padding scales slightly with height
+    padding = max(8, int(window_h * 0.015))
+
+    # Bottom-right positioning
+    x = window_w - text.get_width() - padding
+    y = window_h - text.get_height() - padding
 
     screen.blit(text, (x, y))
-    
-def render_error_overlay(screen, font, error_text):
-    """Display fatal error log overlay."""
-    surf = pygame.Surface((WIDTH - 100, HEIGHT - 100), pygame.SRCALPHA)
-    surf.fill(COLOUR_ERROR_BG)
-    y = 20
-    for line in str(error_text).splitlines()[-30:]:
-        surf.blit(font.render(line, True, COLOUR_ERROR_TEXT), (20, y))
-        y += 18
-    screen.blit(surf, (50, 50))
-    screen.blit(font.render("FATAL ERROR — PRESS F9 TO HIDE", True, COLOUR_ERROR_HEADER), (60, 60))
 
 def main():
     ensure_pygame_ready()
     global fatal_error
     
     ai = AIController()
-    ai_enabled = AI_TRAFFIC
     ai_spawn_timer = 0.0
     
     pygame.init()
 
-    # --- Dynamic window sizing ---
     info = pygame.display.Info()
     screen_w, screen_h = info.current_w, info.current_h
-    PADDING = 120  # pixels of margin around screen edges
+    PADDING = 120
     WIDTH = max(800, screen_w - PADDING)
     HEIGHT = max(600, screen_h - PADDING)
 
-    # --- Version check & update modal ---
     has_update, remote_version = check_for_update(VERSION)
     if has_update and remote_version:
         print(f"Update available: {remote_version} (local {VERSION})")
@@ -248,11 +262,9 @@ def main():
         pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION}")
         update_info = None
 
-    # --- Window setup ---
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
     clock = pygame.time.Clock()
 
-    # --- State setup ---
     state = {
         "planes": [spawn_random_plane(i) for i in range(1, INITIAL_PLANE_COUNT + 1)],
         "runways": all_runways(),
@@ -269,70 +281,57 @@ def main():
         "show_update_modal": bool(update_info),
         "update_info": update_info,
         "modal_ok_rect": None, 
-        "fps_avg": 0.0
+        "fps_avg": 0.0,
+        "ai_enabled": AI_TRAFFIC,
+        "voice_enabled": RESPONSE_VOICE,
     }
 
     running = True
     while running:
         dt = 0 if fatal_error else (clock.tick(FPS) / 1000.0) * SIM_SPEED
 
-        # Refresh resolution in case user resizes monitor / resolution
-        info = pygame.display.Info()
-        screen_w, screen_h = info.current_w, info.current_h
-        WIDTH = max(800, screen_w - PADDING)
-        HEIGHT = max(600, screen_h - PADDING)
-
         current_fps = clock.get_fps()
         state["fps_avg"] = (state.get("fps_avg", current_fps) * 0.9) + (current_fps * 0.1)
 
-        # --- AI traffic ---
-        if ai_enabled:
-            ai_spawn_timer += dt
-            if ai_spawn_timer >= AI_SPAWN_INTERVAL_S:
-                ai_spawn_timer = 0.0
-                p = spawn_random_plane(len(state["planes"]) + 1)
-                p.ai_controlled = True
-                state["planes"].append(p)
+        if state.get("ai_enabled"):
             ai.update(state["planes"], state["runways"], dt)
-
-        # --- Cursor blink ---
-        state["cursor_timer"] += dt
-        if state["cursor_timer"] >= CURSOR_BLINK_SPEED:
-            state["cursor_visible"] = not state["cursor_visible"]
-            state["cursor_timer"] = 0
-
-        layout = calculate_layout(WIDTH, HEIGHT)
-        if not pygame.font.get_init():
-            pygame.font.init()
-        font = pygame.font.SysFont(DEFAULT_FONT, layout["FONT_SIZE"])
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 close_all_windows()
                 running = False
+
+            elif event.type == pygame.VIDEORESIZE:
+                # Only update screen when user manually resizes
+                WIDTH, HEIGHT = event.w, event.h
+                screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                handle_mouse_input(event, state, layout, screen, font)
+                handle_mouse_input(event, state, calculate_layout(WIDTH, HEIGHT), screen, font)
             elif event.type == pygame.KEYDOWN:
                 handle_keyboard_input(event, state)
 
             if state["show_update_modal"]:
                 if handle_update_modal_event(event, state):
                     continue
-                
+
+        # --- Update simulation ---
         update_simulation(state, dt)
 
-        try:
-            draw_radar(
-                screen, state["planes"], font, state["messages"], state["conflicts"],
-                radio_log=state["radio_log"], active_cs=state["active_cs"],
-                selected_plane=state["selected_plane"], radio_scroll=state["radio_scroll"],
-                runways=state["runways"]
-            )
-        except pygame.error:
-            break
+        # --- Draw ---
+        layout = calculate_layout(WIDTH, HEIGHT)
+        if not pygame.font.get_init():
+            pygame.font.init()
+        font = pygame.font.SysFont(DEFAULT_FONT, layout["FONT_SIZE"])
 
+        draw_radar(
+            screen, state["planes"], font, state["messages"], state["conflicts"],
+            radio_log=state["radio_log"], active_cs=state["active_cs"],
+            selected_plane=state["selected_plane"], radio_scroll=state["radio_scroll"],
+            runways=state["runways"]
+        )
         render_console(screen, font, state, layout)
-        render_clock(screen, font)
+        render_clock(screen)
 
         pygame.display.flip()
 

@@ -71,60 +71,61 @@ def check_conflicts(planes):
                 res.append((a, b, lat, vert))
     return res
 
-def load_fixes():
-    """Return scaled fix coordinates relative to current calculated layout."""
-    layout = calculate_layout(WIDTH, HEIGHT)
-    radar_width = layout["RADAR_WIDTH"]
-    screen_height = HEIGHT
+def load_fixes(layout: dict | None = None):
+    """Return dynamically scaled fix coordinates based on current layout."""
+    if layout is None:
+        layout = calculate_layout(WIDTH, HEIGHT)
 
+    radar_width = layout["RADAR_WIDTH"]
+    radar_height = layout["RADAR_HEIGHT"]
+
+    # Scale relative to the original WIDTH/HEIGHT proportions
     scale_x = radar_width / WIDTH
-    scale_y = screen_height / HEIGHT
+    scale_y = radar_height / HEIGHT
 
     scaled = {}
     for name, pos in FIXES.items():
         scaled[name] = {
             "x": int(pos["x"] * scale_x),
-            "y": int(pos["y"] * scale_y)
+            "y": int(pos["y"] * scale_y),
         }
     return scaled
 
-def calculate_layout(width, height):
-    layout = {}
+def calculate_layout(width: int, height: int) -> dict:
+    """Generate a responsive, scale-aware layout for PyATC."""
 
-    # --- Ratios and proportions ---
-    sidebar_ratio = 0.15          # right-hand comms/log sidebar width
-    bottom_ratio = 0.25           # console occupies bottom 25% of height
-    font_ratio = 0.016            # proportional text size
+    # --- Scaling ratios ---
+    sidebar_ratio = 0.18               # Sidebar width = 18% of screen width
+    console_ratio = 0.10               # Console height = 10% of screen height
+    font_ratio = 0.022                 # Font scales with height
+    ring_scale_base = 1500             # Used to scale radar range rings
 
-    # --- Derived sizes ---
-    layout["SIDEBAR_WIDTH"] = int(width * sidebar_ratio)
-    layout["RADAR_WIDTH"] = width - layout["SIDEBAR_WIDTH"]
-    layout["BOTTOM_MARGIN"] = int(height * bottom_ratio)
-    layout["FONT_SIZE"] = max(12, int(height * font_ratio))
+    # --- Derived dimensions ---
+    sidebar_width = int(width * sidebar_ratio)
+    console_height = max(40, int(height * console_ratio))
+    font_size = max(12, int(height * font_ratio))
 
-    # --- Element Anchoring ---
-    # Radar area (main)
-    layout["RADAR_RECT"] = pygame.Rect(0, 0, layout["RADAR_WIDTH"], height - layout["BOTTOM_MARGIN"])
+    # --- Rectangles ---
+    sidebar_rect = pygame.Rect(width - sidebar_width, 0, sidebar_width, height - console_height)
+    radar_rect = pygame.Rect(0, 0, width - sidebar_width, height - console_height)
+    console_rect = pygame.Rect(0, height - console_height, width, console_height)
 
-    # Console bar (bottom area)
-    layout["CONSOLE_RECT"] = pygame.Rect(
-        0,
-        height - layout["BOTTOM_MARGIN"],
-        width,
-        layout["BOTTOM_MARGIN"]
-    )
+    # --- Scale factor for radar elements ---
+    # Keeps radar range circles proportional to available radar width
+    ring_scale = radar_rect.width / ring_scale_base
 
-    # Radio/Comms sidebar (sticks to right side)
-    layout["SIDEBAR_RECT"] = pygame.Rect(
-        width - layout["SIDEBAR_WIDTH"],
-        0,
-        layout["SIDEBAR_WIDTH"],
-        height - layout["BOTTOM_MARGIN"]
-    )
-
-    # Useful central references
-    layout["RADAR_CENTER"] = (layout["RADAR_RECT"].centerx, layout["RADAR_RECT"].centery)
-    layout["WINDOW_W"], layout["WINDOW_H"] = width, height
+    layout = {
+        "SIDEBAR_RECT": sidebar_rect,
+        "RADAR_RECT": radar_rect,
+        "CONSOLE_RECT": console_rect,
+        "RADAR_CENTER": radar_rect.center,
+        "SIDEBAR_WIDTH": sidebar_width,
+        "RADAR_WIDTH": radar_rect.width,
+        "RADAR_HEIGHT": radar_rect.height,
+        "BOTTOM_MARGIN": console_height,
+        "FONT_SIZE": font_size,
+        "RING_SCALE": ring_scale,
+    }
 
     return layout
 
@@ -172,3 +173,8 @@ def convert_to_phraseology(value: int, type: str) -> str:
 
     return str(value)
 
+def scale_position(x, y, layout: dict) -> tuple[int, int]:
+    """Scale radar/world coordinates according to current layout."""
+    scale_x = layout["RADAR_WIDTH"] / WIDTH
+    scale_y = layout["RADAR_HEIGHT"] / HEIGHT
+    return int(x * scale_x), int(y * scale_y)

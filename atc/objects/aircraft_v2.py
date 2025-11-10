@@ -76,6 +76,7 @@ class Aircraft:
 
     # --- command execution ---
     def execute_command(self, cmd: Command, dt) -> bool:
+        layout = calculate_layout(WIDTH, HEIGHT)
         assert cmd.value is not None
         if cmd.type == "ALT":
             if cmd.value.isdigit():
@@ -108,7 +109,7 @@ class Aircraft:
             return True
 
         elif cmd.type == "NAV":
-            fixes = load_fixes()
+            fixes = load_fixes(layout)
             if cmd.value not in fixes:
                 self.msg = f"UNKNOWN FIX {cmd.value}"
                 return True
@@ -265,7 +266,7 @@ class Aircraft:
 def spawn_random_plane(i: int) -> Aircraft:
     layout = calculate_layout(WIDTH, HEIGHT)
     radar_width = layout["RADAR_WIDTH"]
-    radar_height = HEIGHT
+    radar_height = layout["RADAR_HEIGHT"]
     margin = int(SPAWN_MARGIN_BASE * (radar_width / 1500))
     edge = random.choice("NSEW")
 

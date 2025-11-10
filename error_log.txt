@@ -73,3 +73,133 @@ Traceback (most recent call last):
 AttributeError: 'Aircraft' object has no attribute 'status'
 
 ------------------------------------------------------------
+[2025-11-07 15:14:18]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 360, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 239, in main
+    ai = AIController()
+  File "D:\Personal\pyatc\atc\ai\controller.py", line 18, in __init__
+    self._fix_names = list(load_fixes().keys()) or []
+  File "D:\Personal\pyatc\atc\utils.py", line 77, in load_fixes
+    radar_width = layout["RADAR_WIDTH"]
+KeyError: 'RADAR_WIDTH'
+
+------------------------------------------------------------
+[2025-11-07 15:20:26]
+Traceback (most recent call last):
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\connection.py", line 312, in _recv_bytes
+    nread, err = ov.GetOverlappedResult(True)
+BrokenPipeError: [WinError 109] The pipe has been ended
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 360, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 335, in main
+    update_simulation(state, dt)
+  File "D:\Personal\pyatc\main.py", line 172, in update_simulation
+    update_shared_state(WINDOW_FLIGHT_PROGRESS, [
+  File "D:\Personal\pyatc\atc\ui\window_manager.py", line 107, in update_shared_state
+    _shared_state[key] = data
+  File "<string>", line 2, in __setitem__
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\managers.py", line 818, in _callmethod
+    kind, result = conn.recv()
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\connection.py", line 250, in recv
+    buf = self._recv_bytes()
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\connection.py", line 321, in _recv_bytes
+    raise EOFError
+EOFError
+
+------------------------------------------------------------
+[2025-11-07 15:43:34]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 341, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 307, in main
+    handle_keyboard_input(event, state)
+  File "D:\Personal\pyatc\main.py", line 63, in handle_keyboard_input
+    layout = calculate_layout(window_w, window_h)
+  File "D:\Personal\pyatc\atc\utils.py", line 101, in calculate_layout
+    sidebar_width = int(width * sidebar_ratio)
+TypeError: unsupported operand type(s) for *: 'NoneType' and 'float'
+
+------------------------------------------------------------
+[2025-11-07 16:06:18]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 341, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 307, in main
+    handle_keyboard_input(event, state)
+  File "D:\Personal\pyatc\main.py", line 63, in handle_keyboard_input
+    layout = calculate_layout(window_w, window_h)
+  File "D:\Personal\pyatc\atc\utils.py", line 101, in calculate_layout
+    sidebar_width = int(width * sidebar_ratio)
+TypeError: unsupported operand type(s) for *: 'NoneType' and 'float'
+
+------------------------------------------------------------
+[2025-11-07 16:15:57]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 341, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 322, in main
+    draw_radar(
+  File "D:\Personal\pyatc\atc\radar.py", line 268, in draw_radar
+    msg_font = pygame.font.SysFont(font.get_name(), new_size)
+AttributeError: 'pygame.font.Font' object has no attribute 'get_name'
+
+------------------------------------------------------------
+[2025-11-07 16:19:53]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 356, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 337, in main
+    draw_radar(
+  File "D:\Personal\pyatc\atc\radar.py", line 241, in draw_radar
+    for wrapped in wrap_text(line, font, sidebar_rect.width - 20):
+UnboundLocalError: local variable 'wrap_text' referenced before assignment
+
+------------------------------------------------------------
+[2025-11-10 11:25:37]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 364, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 345, in main
+    draw_radar(
+  File "D:\Personal\pyatc\atc\radar.py", line 162, in draw_radar
+    window_w, window_h = screen.get_size()
+pygame.error: display Surface quit
+
+------------------------------------------------------------
+[2025-11-10 11:31:15]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 364, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 330, in main
+    handle_keyboard_input(event, state)
+  File "D:\Personal\pyatc\main.py", line 110, in handle_keyboard_input
+    show_modal("AI Mode", f"AI Mode {'Enabled' if state['ai_enabled'] else 'Disabled'}")
+  File "D:\Personal\pyatc\atc\ui\window_manager.py", line 100, in show_modal
+    proc.start()
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\process.py", line 121, in start
+    self._popen = self._Popen(self)
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\context.py", line 336, in _Popen
+    return Popen(process_obj)
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\popen_spawn_win32.py", line 93, in __init__
+    reduction.dump(process_obj, to_child)
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\reduction.py", line 60, in dump
+    ForkingPickler(file, protocol).dump(obj)
+AttributeError: Can't pickle local object 'show_modal.<locals>._modal_process'
+
+------------------------------------------------------------
+[2025-11-10 11:31:16]
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "C:\Users\luc_mcmullan\AppData\Local\Programs\Python\Python310\lib\multiprocessing\spawn.py", line 126, in _main
+    self = reduction.pickle.load(from_parent)
+EOFError: Ran out of input
+
+------------------------------------------------------------

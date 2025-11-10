@@ -109,12 +109,12 @@
             - Added detached windows for modular displays (F4, etc.)
             - Improved multiprocessing and state synchronisation
 
-        1.6.4 - Auto-versioning
-            - Implemented auto-versioning for EXE builds
-            - Added GitHub version comparison on startup
-            - Displays "Update available" in window title when out of sync
-            - Added version.txt lookup for frozen and non-frozen builds
-            - Improved update checker reliability and file parsing
+    1.7.0 - Auto-versioning
+        - Implemented auto-versioning for EXE builds
+        - Added GitHub version comparison on startup
+        - Displays "Update available" in window title when out of sync
+        - Added version.txt lookup for frozen and non-frozen builds
+        - Improved update checker reliability and file parsing
 
 2.0.0 - AI Traffic & Systems
     - Introduced AI-controlled aircraft with autonomous behaviour
@@ -135,6 +135,17 @@
         2.1.2 - UI, FPS advancements
             - Removed all references to in-game windows
             - Converted menus to outside windows
+            - Dynamic window resizing and scaling
+
+        2.1.3 - UI scaling 
+            - Refined scaling for all UI objects
+            - Correctly scale positions and sizes to the window
     
     2.2.0
         - Add voice response for all aircraft (not just AI)
+
+        2.2.1 - Modal updates
+            - Added modals to toggle voice and AI
+            - Removed blocking from modals
+
+    

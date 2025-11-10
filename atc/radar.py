@@ -61,30 +61,54 @@ def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None):
     return {"expand_icon": expand_icon}
 
 
-def draw_aircraft(screen, font, plane, active=False):
+def draw_aircraft(screen, font, plane, active=False, layout=None):
+    """
+    Draw aircraft icon, heading line, and labels — all scaled to current layout.
+    Keeps aircraft visible and proportionally positioned when the window size changes.
+    """
+    from atc.utils import scale_position
+
+    # Get layout if not passed
+    if layout is None:
+        layout = calculate_layout(*screen.get_size())
+
+    # Scale position
+    x, y = scale_position(plane.x, plane.y, layout)
+    scale = layout["RING_SCALE"]
+
+    # Color based on selection state
     colour = COLOUR_PLANE_ACTIVE if active else COLOUR_PLANE_DEFAULT
 
-    rect = pygame.Surface((PLANE_ICON_SIZE, PLANE_ICON_SIZE), pygame.SRCALPHA)
+    # Scaled icon size
+    icon_size = max(2, int(PLANE_ICON_SIZE * scale))
+    heading_line_len = int(PLANE_HEADING_LINE_LENGTH * scale)
+
+    # Aircraft square icon
+    rect = pygame.Surface((icon_size, icon_size), pygame.SRCALPHA)
     rect.fill(colour)
     rotated = pygame.transform.rotate(rect, -plane.hdg)
-    rect_rect = rotated.get_rect(center=(plane.x, plane.y))
+    rect_rect = rotated.get_rect(center=(x, y))
     screen.blit(rotated, rect_rect.topleft)
 
+    # Heading line (scaled)
     dx, dy = heading_to_vec(plane.hdg)
-    end_x = plane.x + dx * PLANE_HEADING_LINE_LENGTH
-    end_y = plane.y + dy * PLANE_HEADING_LINE_LENGTH
-    pygame.draw.line(screen, colour, (plane.x, plane.y), (end_x, end_y), 2)
+    end_x = x + dx * heading_line_len
+    end_y = y + dy * heading_line_len
+    pygame.draw.line(screen, colour, (x, y), (end_x, end_y), 2)
 
-    # aircraft label construction
+    # Text labels (scaled positions and consistent font)
     topline_const = f"{plane.callsign} {plane.state}"
     bottomline_const = f"{int(plane.alt)} {int(plane.spd)} {int(plane.hdg)}"
 
     text_topline = font.render(topline_const, True, colour)
     text_bottomline = font.render(bottomline_const, True, colour)
 
-    screen.blit(text_topline, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_CALLSIGN))
-    screen.blit(text_bottomline, (plane.x + PLANE_TAG_OFFSET_X, plane.y + PLANE_TAG_OFFSET_Y_INFO))
+    tag_offset_x = int(PLANE_TAG_OFFSET_X * scale)
+    tag_offset_y_call = int(PLANE_TAG_OFFSET_Y_CALLSIGN * scale)
+    tag_offset_y_info = int(PLANE_TAG_OFFSET_Y_INFO * scale)
 
+    screen.blit(text_topline, (x + tag_offset_x, y + tag_offset_y_call))
+    screen.blit(text_bottomline, (x + tag_offset_x, y + tag_offset_y_info))
 
 def draw_performance_menu(screen, font, planes_or_snapshot, *args, **kwargs):
     """
@@ -135,21 +159,23 @@ def draw_radar(screen, planes, font, messages, conflicts,
                radio_log=None, active_cs=None, selected_plane=None, radio_scroll=0,
                runways=None):
 
-    layout = calculate_layout(WIDTH, HEIGHT)
-    RADAR_WIDTH = layout["RADAR_WIDTH"]
-    RADAR_CENTER = layout["RADAR_CENTER"]
-    SIDEBAR_WIDTH = layout["SIDEBAR_WIDTH"]
-    SIDEBAR_OFFSET = layout["SIDEBAR_OFFSET"]
-    sidebar_x = RADAR_WIDTH - SIDEBAR_OFFSET
+    window_w, window_h = screen.get_size()
+    layout = calculate_layout(window_w, window_h)
 
-    screen.fill(COLOUR_RADAR_BG)
+    radar_rect = layout["RADAR_RECT"]
+    sidebar_rect = layout["SIDEBAR_RECT"]
+    radar_center = layout["RADAR_CENTER"]
 
+    # --- Radar background ---
+    screen.fill(COLOUR_RADAR_BG, radar_rect)
+
+    # --- Runways ---
     if runways:
         for rw in runways:
             rw.draw(screen, font)
 
-    # Fix rings and grid
-    fixes = load_fixes()
+    # --- Fix rings etc. (no hard-coded WIDTH/HEIGHT) ---
+    fixes = load_fixes(layout)
     for name, position in fixes.items():
         x, y = position["x"], position["y"]
         scale = position.get("ring_scale", 1.0)
@@ -157,8 +183,8 @@ def draw_radar(screen, planes, font, messages, conflicts,
         for nm in range(*RADAR_FIX_RING_SPACING_NM):
             pixel = int(nm_to_px(nm) * scale)
             pygame.draw.circle(screen, COLOUR_FIX_RING, (x, y), pixel, 1)
-            screen.blit(font.render(f"{nm}", True, COLOUR_FIX_TEXT),
-                        (x + pixel + 4, y - int(8 * scale)))
+            label = font.render(f"{nm}", True, COLOUR_FIX_TEXT)
+            screen.blit(label, (x + pixel + 4, y - int(8 * scale)))
 
         for deg in range(0, 360, RADAR_HEADING_INTERVAL_DEG):
             rad = math.radians(deg)
@@ -168,59 +194,108 @@ def draw_radar(screen, planes, font, messages, conflicts,
 
         pygame.draw.circle(screen, COLOUR_FIX_CENTER_OUTER, (x, y), int(5 * scale))
         pygame.draw.circle(screen, COLOUR_FIX_CENTER_INNER, (x, y), int(2 * scale))
-        screen.blit(font.render(name, True, COLOUR_FIX_LABEL),
-                    (x + int(10 * scale), y - int(10 * scale)))
+        name_txt = font.render(name, True, COLOUR_FIX_LABEL)
+        screen.blit(name_txt, (x + int(10 * scale), y - int(10 * scale)))
 
+    # --- Radar rings ---
+    scale = layout["RING_SCALE"]
     for radius in range(RADAR_RING_SPACING, RADAR_RING_MAX_RADIUS, RADAR_RING_SPACING):
-        pygame.draw.circle(screen, COLOUR_RADAR_GRID, RADAR_CENTER, radius, 1)
+        pygame.draw.circle(screen, COLOUR_RADAR_GRID, RADAR_CENTER, int(radius * scale), 1)
 
-    pygame.draw.line(screen, COLOUR_RADAR_GRID, (RADAR_CENTER[0], 0), (RADAR_CENTER[0], HEIGHT), 1)
-    pygame.draw.line(screen, COLOUR_RADAR_GRID, (0, RADAR_CENTER[1]), (RADAR_WIDTH, RADAR_CENTER[1]), 1)
+    # Crosshairs constrained to radar rect
+    pygame.draw.line(
+        screen,
+        COLOUR_RADAR_GRID,
+        (radar_center[0], radar_rect.top),
+        (radar_center[0], radar_rect.bottom),
+        1,
+    )
+    pygame.draw.line(
+        screen,
+        COLOUR_RADAR_GRID,
+        (radar_rect.left, radar_center[1]),
+        (radar_rect.right, radar_center[1]),
+        1,
+    )
 
+    # --- Aircraft ---
     for plane in planes:
         draw_aircraft(screen, font, plane, active=(plane.callsign == active_cs))
 
-    y = 5
+    # --- Conflicts (top-left of radar area) ---
+    cy = radar_rect.top + 5
     for a, b, lat, vert in conflicts:
         msg = f"CONFLICT {a.callsign}-{b.callsign} {lat:.1f}NM {vert:.0f}FT"
-        screen.blit(font.render(msg, True, COLOUR_CONFLICT), (5, y))
-        y += 18
+        screen.blit(font.render(msg, True, COLOUR_CONFLICT),
+                    (radar_rect.left + 5, cy))
+        cy += 18
 
-    pygame.draw.rect(screen, COLOUR_SIDEBAR_BG, (sidebar_x, 0, SIDEBAR_WIDTH, HEIGHT))
-    pygame.draw.line(screen, COLOUR_SIDEBAR_BORDER, (sidebar_x, 0), (sidebar_x, HEIGHT), 1)
+    # --- Sidebar / Radio log (LEFT, pinned) ---
+    pygame.draw.rect(screen, COLOUR_SIDEBAR_BG, sidebar_rect)
+    pygame.draw.line(
+        screen,
+        COLOUR_SIDEBAR_BORDER,
+        (sidebar_rect.left, sidebar_rect.top),
+        (sidebar_rect.left, sidebar_rect.bottom),
+        1,
+    )
 
-    # Radio / Log sidebar
     display_plane = selected_plane or next((p for p in planes if p.callsign == active_cs), None)
+
     if display_plane:
         cs = display_plane.callsign
-        screen.blit(font.render(f"ACTIVE: {cs}", True, COLOUR_MSG_TITLE), (sidebar_x + 10, 10))
+        x0 = sidebar_rect.x + 10
+        y0 = sidebar_rect.y + 10
+
+        screen.blit(font.render(f"ACTIVE: {cs}", True, COLOUR_MSG_TITLE), (x0, y0))
+        y = y0 + 28
 
         log = radio_log.get(cs, []) if radio_log else []
-        visible_lines = 30
-        y = 40
-
         if not log:
             screen.blit(font.render("(no messages yet)", True, COLOUR_MSG_PLACEHOLDER),
-                        (sidebar_x + 10, y))
+                        (x0, y))
         else:
-            start = max(0, len(log) - visible_lines - radio_scroll)
+            max_lines = max(5, (sidebar_rect.height - 60) // 18)
+            start = max(0, len(log) - max_lines - radio_scroll)
             end = max(0, len(log) - radio_scroll)
             subset = log[start:end]
 
             for line in subset:
                 color = COLOUR_MSG_CTRL if line.startswith("CTRL") else COLOUR_MSG_TEXT
-                for wrapped in wrap_text(line, font, SIDEBAR_WIDTH - 25):
-                    screen.blit(font.render(wrapped, True, color), (sidebar_x + 10, y))
+                for wrapped in wrap_text(line, font, sidebar_rect.width - 20):
+                    if y > sidebar_rect.bottom - 20:
+                        break
+                    screen.blit(font.render(wrapped, True, color), (x0, y))
                     y += 18
 
-            if len(log) > visible_lines:
-                total = len(log) - visible_lines
-                bar_h = max(20, int(200 * (visible_lines / len(log))))
-                bar_y = int(40 + (radio_scroll / total) * (200 - bar_h))
-                pygame.draw.rect(screen, COLOUR_MSG_SCROLLBAR,
-                                 (sidebar_x + SIDEBAR_WIDTH - 15, bar_y, 8, bar_h))
+            # Scrollbar
+            if len(log) > max_lines:
+                total = len(log) - max_lines
+                bar_area_h = sidebar_rect.height - 80
+                bar_h = max(20, int(bar_area_h * (max_lines / len(log))))
+                bar_y = int(
+                    sidebar_rect.y + 40
+                    + (radio_scroll / max(total, 1)) * (bar_area_h - bar_h)
+                )
+                pygame.draw.rect(
+                    screen,
+                    COLOUR_MSG_SCROLLBAR,
+                    (sidebar_rect.right - 10, bar_y, 6, bar_h),
+                )
     else:
-        screen.blit(font.render("Click a plane to view log", True, COLOUR_MSG_HINT),
-                    (sidebar_x + 10, 10))
+        msg = "Click a plane to view log"
+        max_width = sidebar_rect.width - 20
+        # Try reducing font size if message won't fit
+        msg_font = font
+        while msg_font.size(msg)[0] > max_width and msg_font.get_height() > 10:
+            new_size = int(msg_font.get_height() * 0.9)
+            msg_font = pygame.font.SysFont(DEFAULT_FONT, new_size)
 
-    return
+        # Wrap text if needed
+        lines = wrap_text(msg, msg_font, max_width)
+
+        y = sidebar_rect.y + 10
+        for line in lines:
+            txt = msg_font.render(line, True, COLOUR_MSG_HINT)
+            screen.blit(txt, (sidebar_rect.x + 10, y))
+            y += msg_font.get_height() + 2
