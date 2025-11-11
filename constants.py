@@ -2,6 +2,11 @@ import pygame
 
 GH_API = "https://raw.githubusercontent.com/lucmcmullan/pyatc/refs/heads/main/version.txt"
 
+AI_HELPER = False
+HELPER_LOOKAHEAD_SECONDS = [60, 120, 300] # seconds for the AI helper to look-ahead for predictions
+HELPER_CONFLICT_THRESHOLD = 0.7 # prob threshold for conflicts
+HELPER_UPDATE_INTERVAL = 2.0 # seconds between updates
+ML_MODEL_PATH = "models/conflict_model.joblib"
 AI_TRAFFIC = False
 RESPONSE_VOICE = False
 
@@ -16,6 +21,9 @@ AI_DECONFLICT_TURN = 25
 AI_APPROACH_ARM_DIST_NM = 12.0
 AI_ALIGN_ALLOWED_DIFF_DEG = 45
 AI_LANDING_SPEED = 160
+
+ACK_DELAY_RANGE = (0.5, 1.5)
+COMMAND_DELAY_RANGE = (0.5, 2.5)
 
 SAFE_LAT_NM = 5.0   
 

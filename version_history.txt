@@ -153,3 +153,7 @@
             - Fixed ability to hold backspace/unicode character in console
             - Finalised some UI scaling
 
+    2.3.0
+        - Differentiated AI planes with a blue colour
+        - Added response/command delays for realism
+        - Added autocomplete for aircraft callsigns (tab)

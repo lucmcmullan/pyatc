@@ -70,7 +70,12 @@ def draw_aircraft(screen, font, plane, active=False, layout=None):
     x, y = scale_position(plane.x, plane.y, layout)
     scale = layout["RING_SCALE"]
 
-    colour = COLOUR_PLANE_ACTIVE if active else COLOUR_PLANE_DEFAULT
+    if plane.ai_controlled:
+        colour = (100, 100, 255)
+    elif active:
+        colour = COLOUR_PLANE_ACTIVE
+    else:
+        colour = COLOUR_PLANE_DEFAULT
 
     icon_size = max(2, int(PLANE_ICON_SIZE * scale))
     heading_line_len = int(PLANE_HEADING_LINE_LENGTH * scale)
@@ -143,6 +148,9 @@ def draw_performance_menu(screen, font, planes_or_snapshot, *args, **kwargs):
     screen.blit(surf, (10, 10))
     return {"expand_icon": expand_rect.move(10, 10)}
 
+def draw_conflict_indicator(a, b, lat, vert, screen, font, radar_rect, cy):
+    msg = f"CONFLICT {a.callsign}-{b.callsign} {lat:.1f}NM {vert:.0f}FT"
+    screen.blit(font.render(msg, True, COLOUR_CONFLICT), (radar_rect.left + 5, cy))
 
 def draw_radar(screen, planes, font, messages, conflicts,
                radio_log=None, active_cs=None, selected_plane=None, radio_scroll=0,
@@ -160,6 +168,7 @@ def draw_radar(screen, planes, font, messages, conflicts,
     if runways:
         for rw in runways:
             rw.draw(screen, font)
+
 
     fixes = load_fixes(layout)
     for name, position in fixes.items():
@@ -210,9 +219,7 @@ def draw_radar(screen, planes, font, messages, conflicts,
 
     cy = radar_rect.top + 5
     for a, b, lat, vert in conflicts:
-        msg = f"CONFLICT {a.callsign}-{b.callsign} {lat:.1f}NM {vert:.0f}FT"
-        screen.blit(font.render(msg, True, COLOUR_CONFLICT),
-                    (radar_rect.left + 5, cy))
+        draw_conflict_indicator(a, b, lat, vert, screen, font, radar_rect, cy)
         cy += 18
 
     pygame.draw.rect(screen, COLOUR_SIDEBAR_BG, sidebar_rect)

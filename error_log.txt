@@ -1,0 +1,15 @@
+[2025-11-10 15:03:23]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 402, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 367, in main
+    handle_keyboard_input(event, state)
+  File "D:\Personal\pyatc\main.py", line 170, in handle_keyboard_input
+    autocomplete(state)
+  File "D:\Personal\pyatc\main.py", line 48, in autocomplete
+    matches = [p.callsign.upper() for p in state["planes"] if p.callsign.upper().startswitch(text)]
+  File "D:\Personal\pyatc\main.py", line 48, in <listcomp>
+    matches = [p.callsign.upper() for p in state["planes"] if p.callsign.upper().startswitch(text)]
+AttributeError: 'str' object has no attribute 'startswitch'
+
+------------------------------------------------------------

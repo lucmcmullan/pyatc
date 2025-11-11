@@ -1,36 +1,43 @@
 import os
 import sys
 import time
+import random
 import psutil
 import pygame
 import datetime
+import threading
 import traceback
 from collections import defaultdict
 from typing import Optional
 
+# --- Core project imports ---
 from update_checker import check_for_update
 from atc.ai.voice import speak
 from atc.ai.controller import AIController
 from atc.objects.runway_v2 import all_runways
 from atc.objects.aircraft_v2 import spawn_random_plane
 from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_log
-from atc.utils import check_conflicts, calculate_layout, get_current_version, ensure_pygame_ready, scale_position
+from atc.utils import (
+    check_conflicts, calculate_layout, get_current_version,
+    ensure_pygame_ready, scale_position
+)
 from atc.command_parser import CommandParser
-from atc.ui.window_manager import open_detached_window, close_all_windows, update_shared_state, show_modal, draw_help_window
+from atc.ui.window_manager import (
+    open_detached_window, close_all_windows, update_shared_state,
+    show_modal, draw_help_window
+)
 from constants import (
     FPS, SIM_SPEED, ERROR_LOG_FILE, RESPONSE_VOICE,
     INITIAL_PLANE_COUNT, DEFAULT_FONT, WINDOW_FLIGHT_PROGRESS,
     WINDOW_MAIN, FUNCTION_KEYS, WINDOW_PERFORMANCE, HELP_TEXT,
     COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT, WINDOW_ERROR,
-    AI_TRAFFIC, WINDOW_HELP,
+    AI_TRAFFIC, WINDOW_HELP, ACK_DELAY_RANGE, AI_HELPER
 )
 
 parser = CommandParser()
 VERSION = get_current_version()
 fatal_error = None
-
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
-
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"  # hide pygame welcome text
 clock = pygame.time.Clock()
 
 log_dir = "logs"
@@ -38,36 +45,58 @@ os.makedirs(log_dir, exist_ok=True)
 session_name = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 session_log_path = os.path.join(log_dir, f"session_{session_name}.txt")
 
+def autocomplete(state):
+    """Auto-complete callsigns when TAB is pressed."""
+    text = state["input_str"].strip().upper()
+    if not text:
+        return
+
+    matches = [p.callsign.upper() for p in state["planes"] if p.callsign.upper().startswith(text)]
+    if not matches:
+        return
+
+    if len(matches) == 1:
+        completed = matches[0] + " "
+    else:
+        prefix = os.path.commonprefix(matches)
+        completed = prefix
+
+    state["input_str"] = completed
+    state["cursor_pos"] = len(state["input_str"])
+
+
 def cleanup_old_logs(log_dir="logs", days=30):
+    """Clean up old log files (older than `days`) at runtime."""
     if not os.path.exists(log_dir):
         return
 
     now = time.time()
-    cutoff = now - (days * 86400) 
-
+    cutoff = now - (days * 86400)
     deleted = 0
+
     for fname in os.listdir(log_dir):
         fpath = os.path.join(log_dir, fname)
         if not os.path.isfile(fpath):
             continue
-
         try:
-            mtime = os.path.getmtime(fpath)
-            if mtime < cutoff:
+            if os.path.getmtime(fpath) < cutoff:
                 os.remove(fpath)
                 deleted += 1
         except Exception:
             pass
 
     if deleted:
-        print(f"Deleted up {deleted} old log file(s) from {log_dir}")
+        print(f"Deleted {deleted} old log file(s) from {log_dir}")
+
 
 def log_radio(message: str):
+    """Append a radio transmission to the session log."""
     with open(session_log_path, "a", encoding="utf-8") as f:
         f.write(f"{message}\n")
 
+
 def handle_exception(exc_type, exc_value, exc_traceback):
-    """Log uncaught exceptions and freeze the sim gracefully."""
+    """Log any uncaught exceptions, then gracefully stop the sim."""
     global fatal_error
 
     if issubclass(exc_type, KeyboardInterrupt):
@@ -82,19 +111,18 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         f.write(entry)
 
     fatal_error = entry
-    print("⚠️ Fatal error logged — see error_log.txt")
+    print("error logged - see error_log.txt")
 
 
 sys.excepthook = handle_exception
 
 def handle_keyboard_input(event, state):
+    """Main handler for all keyboard input in the console and hotkeys."""
     info = pygame.display.Info()
-
     layout = calculate_layout(info.current_w, info.current_h)
-
-    """Process all keyboard input events."""
     key = event.key
 
+    # command parsing
     if key == pygame.K_RETURN and state["input_str"].strip():
         state["messages"].append("> " + state["input_str"])
         results = parser.parse(state["input_str"], state["planes"])
@@ -105,6 +133,7 @@ def handle_keyboard_input(event, state):
             state["cursor_pos"] = 0
             return
 
+        # send message + pilot reply
         if isinstance(results, list):
             segments = [seg.strip() for seg in state["input_str"].split("|") if seg.strip()]
             for res in results:
@@ -112,10 +141,16 @@ def handle_keyboard_input(event, state):
                 state["messages"].append(ctrl_msg)
                 cs_segment = next((seg for seg in segments if seg.startswith(cs)), state["input_str"])
                 state["radio_log"][cs].append(f"CTRL: {cs_segment}")
-                state["radio_log"][cs].append(f"{cs}: {ack_msg}")
-                log_radio(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {cs}: {ack_msg}")
-                speak(ack_msg)
 
+                delay = random.uniform(*ACK_DELAY_RANGE)
+
+                def delayed_ack(cs=cs, ack_msg=ack_msg):
+                    state["radio_log"][cs].append(f"{cs}: {ack_msg}")
+                    speak(ack_msg)
+
+                threading.Timer(delay, delayed_ack).start()
+
+        # reset console input
         state["input_str"] = ""
         state["cursor_pos"] = 0
 
@@ -128,6 +163,7 @@ def handle_keyboard_input(event, state):
         state["cursor_pos"] = max(0, state["cursor_pos"] - 1)
     elif key == pygame.K_RIGHT:
         state["cursor_pos"] = min(len(state["input_str"]), state["cursor_pos"] + 1)
+
     elif key == FUNCTION_KEYS["help"]:
         open_detached_window(WINDOW_HELP, draw_help_window)
     elif key == FUNCTION_KEYS["performance"]:
@@ -141,9 +177,13 @@ def handle_keyboard_input(event, state):
         state["voice_enabled"] = not state["voice_enabled"]
         show_modal("Voice Response", f"Voice Response {'Enabled' if state['voice_enabled'] else 'Disabled'}")
 
+    elif key == pygame.K_TAB:
+        autocomplete(state)
+
     elif key == FUNCTION_KEYS["errors"]:
         if fatal_error:
             show_modal(WINDOW_ERROR, fatal_error)
+
     elif event.unicode.isprintable():
         state["input_str"] = (
             state["input_str"][:state["cursor_pos"]]
@@ -152,12 +192,12 @@ def handle_keyboard_input(event, state):
         )
         state["cursor_pos"] += 1
 
+
 def handle_update_modal_event(event: pygame.event.Event, state: dict):
-    """Consume events while the update modal is visible."""
+    """Handles the OK/ESC logic when an update notification modal is on screen."""
     if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
         state["show_update_modal"] = False
         return True
-
     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
         btn: Optional[pygame.Rect] = state.get("modal_ok_rect")
         if btn and btn.collidepoint(event.pos):
@@ -167,14 +207,14 @@ def handle_update_modal_event(event: pygame.event.Event, state: dict):
 
 
 def handle_mouse_input(event, state, layout):
-    """Process all mouse input events."""
+    """Handles all radar + sidebar mouse interactions (selection, scrolling)."""
     mx, my = event.pos
     scale = layout["RING_SCALE"]
 
+    # left-click on aircraft
     if event.button == 1:
         for p in state["planes"]:
             px, py = scale_position(p.x, p.y, layout)
-
             hit_radius = max(6, int(10 * scale))
             if (px - mx) ** 2 + (py - my) ** 2 < hit_radius ** 2:
                 state["selected_plane"] = p
@@ -189,27 +229,30 @@ def handle_mouse_input(event, state, layout):
             state["input_str"] = ""
             state["cursor_pos"] = 0
 
+    # scroll wheel
     elif event.button == 4:
         state["radio_scroll"] = max(0, state["radio_scroll"] - 1)
     elif event.button == 5:
         state["radio_scroll"] += 1
 
-
 def update_simulation(state, dt):
-    """Update aircraft and detect conflicts."""
+    """Runs aircraft updates, detects conflicts, and pushes info to detached windows."""
     try:
         for plane in state["planes"]:
             plane.update(dt)
     except Exception:
         handle_exception(*sys.exc_info())
 
+    # Conflict detection and shared state sync
     state["conflicts"] = check_conflicts(state["planes"])
 
+    # sync live data to detachable windows
     update_shared_state(WINDOW_FLIGHT_PROGRESS, [
         {"callsign": p.callsign, "alt": p.alt, "spd": p.spd, "hdg": p.hdg, "state": p.state}
         for p in state["planes"]
     ])
 
+    # performance window
     update_shared_state(WINDOW_PERFORMANCE, {
         "fps": int(state.get("fps_avg", 0)),
         "sim_speed": SIM_SPEED,
@@ -222,10 +265,11 @@ def update_simulation(state, dt):
     })
 
     update_shared_state(WINDOW_HELP, {"title": f"PyATC {VERSION} Help Reference", "text": HELP_TEXT})
-    
-def render_console(screen, state, layout):
-    rect = layout["CONSOLE_RECT"]
 
+
+def render_console(screen, state, layout):
+    """Draws the command console bar at the bottom."""
+    rect = layout["CONSOLE_RECT"]
     pygame.draw.rect(screen, COLOUR_CONSOLE_BG, rect)
 
     font_console = pygame.font.SysFont(DEFAULT_FONT, layout["FONT_SIZE_CONSOLE"])
@@ -234,52 +278,51 @@ def render_console(screen, state, layout):
     text_y = rect.y + (rect.height - txt.get_height()) // 2
     screen.blit(txt, (rect.x + 10, text_y))
 
+    # blink logic
     if state["cursor_visible"]:
         before = f"> {state['input_str'][:state['cursor_pos']]}"
         cursor_x = rect.x + 10 + font_console.size(before)[0]
-        cursor_y = text_y
         pygame.draw.rect(
             screen,
             COLOUR_CONSOLE_TEXT,
-            (cursor_x, cursor_y, 2, txt.get_height() - 2),
+            (cursor_x, text_y, 2, txt.get_height() - 2),
         )
 
+
 def render_clock(screen):
+    """Renders the bottom-right UTC clock (scales with window size)."""
     import datetime
     from constants import DEFAULT_FONT
-
     window_w, window_h = screen.get_size()
-
     scaled_size = max(12, int(window_h * 0.025))
     font = pygame.font.SysFont(DEFAULT_FONT, scaled_size)
 
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S UTC")
     text = font.render(now, True, (0, 255, 0))
-
     padding = max(8, int(window_h * 0.015))
 
     x = window_w - text.get_width() - padding
     y = window_h - text.get_height() - padding
-
     screen.blit(text, (x, y))
 
+
+#  main sim
 def main():
     ensure_pygame_ready()
     global fatal_error
-    
     ai = AIController()
-    
+
     pygame.init()
     pygame.key.set_repeat(300, 50)
 
+    # Window setup
     info = pygame.display.Info()
     screen_w, screen_h = info.current_w, info.current_h
-    PADDING = 120
-    WIDTH = max(800, screen_w - PADDING)
-    HEIGHT = max(600, screen_h - PADDING)
+    WIDTH = max(800, screen_w - 120)
+    HEIGHT = max(600, screen_h - 120)
 
+    # Check for updates at startup
     has_update, remote_version = check_for_update(VERSION)
-
     if has_update and remote_version:
         pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION} - Update available: {remote_version}")
         update_info = {"remote": remote_version, "local": VERSION}
@@ -292,6 +335,7 @@ def main():
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
     clock = pygame.time.Clock()
 
+    # Core simulation state container
     state = {
         "planes": [spawn_random_plane(i) for i in range(1, INITIAL_PLANE_COUNT + 1)],
         "runways": all_runways(),
@@ -307,31 +351,35 @@ def main():
         "conflicts": [],
         "show_update_modal": bool(update_info),
         "update_info": update_info,
-        "modal_ok_rect": None, 
+        "modal_ok_rect": None,
         "fps_avg": 0.0,
         "ai_enabled": AI_TRAFFIC,
         "voice_enabled": RESPONSE_VOICE,
     }
 
+    # runtime
     running = True
     while running:
+        # simulation scaled by SIM_SPEED
         dt = 0 if fatal_error else (clock.tick(FPS) / 1000.0) * SIM_SPEED
-
         current_fps = clock.get_fps()
         state["fps_avg"] = (state.get("fps_avg", current_fps) * 0.9) + (current_fps * 0.1)
 
+        # ai logic (spawn/move planes)
         if state.get("ai_enabled"):
             ai.update(state["planes"], state["runways"], dt)
 
+        # if AI_HELPER:
+        #     ml.update_async(state["planes"], state["runways"])
+
+        # events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 close_all_windows()
                 running = False
-
             elif event.type == pygame.VIDEORESIZE:
                 WIDTH, HEIGHT = event.w, event.h
                 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 handle_mouse_input(event, state, calculate_layout(WIDTH, HEIGHT))
             elif event.type == pygame.KEYDOWN:
@@ -341,15 +389,17 @@ def main():
                 if handle_update_modal_event(event, state):
                     continue
 
+        # rendering prep
         update_simulation(state, dt)
-
         layout = calculate_layout(WIDTH, HEIGHT)
 
-        font_radar = pygame.font.SysFont(DEFAULT_FONT, layout["FONT_SIZE_RADAR"])
-
+        # ensure font is ready before drawing
         if not pygame.font.get_init():
             pygame.font.init()
 
+        font_radar = pygame.font.SysFont(DEFAULT_FONT, layout["FONT_SIZE_RADAR"])
+
+        # screen draws
         draw_radar(
             screen, state["planes"], font_radar, state["messages"], state["conflicts"],
             radio_log=state["radio_log"], active_cs=state["active_cs"],
@@ -358,9 +408,9 @@ def main():
         )
         render_console(screen, state, layout)
         render_clock(screen)
-
         pygame.display.flip()
 
+    # exit
     pygame.quit()
     close_all_windows()
     sys.exit()
@@ -369,5 +419,5 @@ def main():
 if __name__ == "__main__":
     import multiprocessing
     multiprocessing.freeze_support()
-    cleanup_old_logs()
+    cleanup_old_logs()  # clear old logs before launch
     main()

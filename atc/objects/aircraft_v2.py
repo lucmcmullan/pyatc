@@ -15,7 +15,7 @@ from constants import (
     LANDING_DECEL_RATE_KTS_PER_SEC,
     TAKEOFF_RELEASE_ALT_FT, TAKEOFF_RELEASE_RATIO,
     LANDING_TOUCHDOWN_ALT_FT, LANDING_ROLLOUT_MIN_SPEED,
-    LANDING_ROLLOUT_MAX_TIME,
+    LANDING_ROLLOUT_MAX_TIME, COMMAND_DELAY_RANGE,
     SPAWN_MARGIN_BASE, SPAWN_HEADING_NORTH, SPAWN_HEADING_SOUTH_1,
     SPAWN_HEADING_SOUTH_2, SPAWN_HEADING_EAST, SPAWN_HEADING_WEST,
     SPAWN_SPEEDS, SPAWN_ALTS, DEFAULT_DEST_ALT
@@ -50,6 +50,8 @@ class Aircraft:
     hold_timer: float = 0.0
     current_runway: Optional["Runway"] = None
     touchdown_time: Optional[float] = None
+    hold_timer: float = 0.0
+    pending_command_timer: float = 0.0
 
     _alt_start: float = dataclasses.field(init=False, default=0)
     _alt_target: float = dataclasses.field(init=False, default=0)
@@ -160,9 +162,18 @@ class Aircraft:
     def update(self, dt):
         if self.command_queue:
             current = self.command_queue[0]
+
+            if self.pending_command_timer <= 0:
+                self.pending_command_timer = random.uniform(*COMMAND_DELAY_RANGE)
+            else:
+                self.pending_command_timer -= dt
+                if self.pending_command_timer > 0:
+                    return
+
             done = self.execute_command(current, dt)
             if done:
                 self.command_queue.pop(0)
+                self.pending_command_timer = 0.0
 
         if self._alt_start_time is not None:
             elapsed = time.time() - self._alt_start_time
