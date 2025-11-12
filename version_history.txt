@@ -183,4 +183,8 @@
             - Altitude logging for aircraft class
             - Right clicking shows performance profile, altitude change,
                 fuel, weight, speed, etcetera
+
+        2.4.3 - Bug fixes
+            - Added aircraft type to profile
+            - Fixed altitude graph displaying "upside down"
             

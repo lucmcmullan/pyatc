@@ -328,7 +328,6 @@ def draw_aircraft_profile_window(screen, font, planes_or_snapshot, *_):
     screen.fill((0, 0, 25))
     if not snap:
         return
-    # --- Altitude graph ---
     if "altitude_history" in snap:
         pts = snap["altitude_history"]
         if len(pts) >= 2:
@@ -345,6 +344,7 @@ def draw_aircraft_profile_window(screen, font, planes_or_snapshot, *_):
                 pygame.draw.lines(screen, (0, 255, 0), False, graph_pts, 2)
 
     lines = [
+        f"Model: {snap.get('icao', 'UNKNOWN')}",
         f"Weight: {snap.get('weight_kg', 0):,.0f} kg",
         f"Fuel: {snap.get('fuel_kg', 0):,.0f}/{snap.get('fuel_capacity_kg', 0):,.0f} kg",
         f"Thrust: {snap.get('thrust_pct', 0):.1f} %",

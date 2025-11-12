@@ -5,7 +5,7 @@ from atc.utils import (
     get_heading_to_fix, distance_to_fix, load_fixes, shortest_turn_dir, px_to_nm
 )
 from atc.ai.voice import speak
-from constants import PERF_DATA_DIR, PLANE_TYPES
+from constants import PLANE_TYPES
 from atc.utils import isa_density_at_alt_ft, interp_curve_xy
 from constants import (
     WIDTH, HEIGHT, AIRLINES,
@@ -15,7 +15,7 @@ from constants import (
     ALTITUDE_STABILISE_AMPLITUDE, ALTITUDE_STABILISE_END_THRESHOLD,
     TURN_RATE_DEG_PER_SEC, SPEED_CHANGE_RATE_KTS_PER_SEC,
     LANDING_DECEL_RATE_KTS_PER_SEC, RUNWAY_SPAWN_PROBABILITY,
-    TAKEOFF_RELEASE_ALT_FT, TAKEOFF_RELEASE_RATIO, RUNWAYS,
+    TAKEOFF_RELEASE_ALT_FT, TAKEOFF_RELEASE_RATIO,
     LANDING_TOUCHDOWN_ALT_FT, LANDING_ROLLOUT_MIN_SPEED,
     LANDING_ROLLOUT_MAX_TIME, COMMAND_DELAY_RANGE, RUNWAY_SPAWN_ALT_FT,
     SPAWN_MARGIN_BASE, SPAWN_HEADING_NORTH, SPAWN_HEADING_SOUTH_1,
@@ -132,7 +132,7 @@ class Aircraft:
             if self.aircraft_type:
                 # Build absolute path relative to this file
                 base_dir = os.path.dirname(os.path.abspath(__file__))
-                perf_dir = os.path.abspath(os.path.join(base_dir, "..", "data", "performance"))
+                perf_dir = os.path.abspath(os.path.join(base_dir, "..", "..", "data", "performance"))
                 path = os.path.join(perf_dir, f"{self.aircraft_type}.json")
 
                 # Case-insensitive fallback
@@ -155,6 +155,7 @@ class Aircraft:
                         self.flap_state = 0
                         self.gear_down = False
                         self.thrust_pct = 60.0
+                        self.icao = profile.icao
                         self._use_new_physics = True
                         print(f"[INFO] Loaded performance profile for {self.aircraft_type}")
                     else:

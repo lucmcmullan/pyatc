@@ -26,10 +26,6 @@ HELPER_CONFLICT_THRESHOLD = 0.7
 HELPER_UPDATE_INTERVAL = 2.0
 ML_MODEL_PATH = "models/conflict_model.joblib"
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR))  # pyatc/
-PERF_DATA_DIR = os.path.abspath(os.path.join(PROJECT_ROOT, "data", "performance"))
-
 AI_DECISION_PERIOD = 3.0
 AI_MIN_ALT = 3000
 AI_MAX_ALT = 8000

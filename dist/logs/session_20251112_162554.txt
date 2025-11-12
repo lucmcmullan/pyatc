@@ -1,0 +1,4 @@
+RK826: roger RK826, hold position, standby for takeoff clearance
+W9175: roger W9175, hold position, standby for takeoff clearance
+BA422: roger BA422, hold position, standby for takeoff clearance
+BA568: roger BA568, hold position, standby for takeoff clearance

@@ -334,6 +334,7 @@ def update_simulation(state, dt):
                 "thrust_pct": getattr(plane, "thrust_pct", 0),
                 "flap_state": getattr(plane, "flap_state", 0),
                 "gear_down": getattr(plane, "gear_down", False),
+                "icao": getattr(plane, "icao", "UNKNOWN"),
                 "altitude_history": getattr(plane, "altitude_history", []),
             }
             update_shared_state(f"{WINDOW_AC_PROFILE} — {plane.callsign}", snap)

@@ -1,0 +1,2 @@
+LM771: roger LM771, hold position, standby for takeoff clearance
+RK686: roger RK686, hold position, standby for takeoff clearance
