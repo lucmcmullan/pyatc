@@ -153,20 +153,20 @@
             - Fixed ability to hold backspace/unicode character in console
             - Finalised some UI scaling
 
-    2.3.0
-        - Differentiated AI planes with a blue colour
-        - Added response/command delays for realism
-        - Implemented ai assistant framework, will release at a later date
+        2.2.3
+            - Differentiated AI planes with a blue colour
+            - Added response/command delays for realism
+            - Implemented ai assistant framework, will release at a later date
     
-        2.3.1 - QoL
+    2.3.0 - QoL
             - Added timestamps for radio log messages
             - Added autocomplete for aircraft callsigns (tab)
             - Added aircraft spawning
     
-        2.3.2
+        2.3.1
             - Aircraft spawn on runways, request takeoffs
 
-        2.3.3 - Bug fixes
+        2.3.2 - Bug fixes
             - Fixed aircraft gaining altitude "on ground"
             - Fixed aircraft spawning off-centre to runways
             - Fixed spawn count overriding max traffic number

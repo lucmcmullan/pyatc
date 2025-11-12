@@ -46,20 +46,15 @@ def _build_runways():
     for rw in base_runways:
         bearing = rw["bearing"]
         length_nm = rw.get("length_nm", RUNWAY_DEFAULT_LENGTH_NM)
-        layout = calculate_layout(WIDTH, HEIGHT)
-        scale = layout["RING_SCALE"]
-        half_len = nm_to_px(length_nm / 2) * scale
-        cx, cy = scale_position(int(rw["x"] * WIDTH), int(rw["y"] * HEIGHT), layout)
-        dx, dy = heading_to_vec(bearing)
-        start = (cx - dx * half_len, cy - dy * half_len)
-        end = (cx + dx * half_len, cy + dy * half_len)
+
+        cx, cy = int(rw["x"] * WIDTH), int(rw["y"] * HEIGHT)
 
         res.append(Runway(
             name=rw.get("auto_name") or rw.get("name", "RWY_UNKNOWN"),
             x=cx,
             y=cy,
-            start=start,
-            end=end,
+            start=(0, 0),
+            end=(0, 0),
             bearing=bearing,
             length_nm=length_nm
         ))
@@ -111,36 +106,38 @@ class Runway:
         layout = calculate_layout(*screen.get_size())
         scale = layout["RING_SCALE"]
 
+        cx, cy = scale_position(self.x, self.y, layout)
+
+        half_len_px = nm_to_px(self.length_nm / 2) * scale
+
+        dx, dy = heading_to_vec(self.bearing)
+        start = (cx - dx * half_len_px, cy - dy * half_len_px)
+        end   = (cx + dx * half_len_px, cy + dy * half_len_px)
+
         base_w = max(1, int(RUNWAY_BASE_WIDTH * scale))
         active_w = max(1, int(RUNWAY_ACTIVE_WIDTH * scale))
+        pygame.draw.line(screen, COLOUR_RUNWAY_BASE, start, end, base_w)
 
-        pygame.draw.line(screen, COLOUR_RUNWAY_BASE, self.start, self.end, base_w)
-
-        if self.status == RUNWAY_OCCUPIED_STATUS:
-            colour = COLOUR_RUNWAY_OCCUPIED
-        elif self.status == RUNWAY_CLOSED_STATUS:
-            colour = COLOUR_RUNWAY_CLOSED
-        else:
-            colour = COLOUR_RUNWAY_AVAILABLE
-            
-        pygame.draw.line(screen, colour, self.start, self.end, active_w)
+        colour = (COLOUR_RUNWAY_OCCUPIED if self.status == RUNWAY_OCCUPIED_STATUS else
+                COLOUR_RUNWAY_CLOSED   if self.status == RUNWAY_CLOSED_STATUS   else
+                COLOUR_RUNWAY_AVAILABLE)
+        pygame.draw.line(screen, colour, start, end, active_w)
 
         label_offset_x = int(RUNWAY_LABEL_OFFSET_X * scale)
         label_offset_y = int(RUNWAY_LABEL_OFFSET_Y * scale)
-        name_offset_x = int(RUNWAY_NAME_OFFSET_X * scale)
-        name_offset_y = int(RUNWAY_NAME_OFFSET_Y * scale)
+        name_offset_x  = int(RUNWAY_NAME_OFFSET_X  * scale)
+        name_offset_y  = int(RUNWAY_NAME_OFFSET_Y  * scale)
 
         label_a = f"{int(round(self.bearing / 10)) % 36:02d}"
         label_b = f"{int(round(self.opposite_bearing / 10)) % 36:02d}"
 
         text_a = font.render(label_a, True, colour)
         text_b = font.render(label_b, True, colour)
-
-        screen.blit(text_a, (self.start[0] + label_offset_x, self.start[1] + label_offset_y))
-        screen.blit(text_b, (self.end[0] - 20, self.end[1] + label_offset_x))
+        screen.blit(text_a, (start[0] + label_offset_x, start[1] + label_offset_y))
+        screen.blit(text_b, (end[0]   - 20,            end[1]   + label_offset_x))
 
         name_text = font.render(self.name, True, COLOUR_RUNWAY_LABEL)
-        screen.blit(name_text, (self.x + name_offset_x, self.y + name_offset_y))
+        screen.blit(name_text, (cx + name_offset_x, cy + name_offset_y))
 
 
 def build_airports():
