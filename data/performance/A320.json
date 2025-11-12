@@ -1,0 +1,120 @@
+{
+  "icao": "A320",
+  "mass": {
+    "empty_kg": 42600,
+    "mtow_kg": 77000,
+    "mlw_kg": 66000,
+    "mzf_kg": 62500,
+    "fuel_capacity_kg": 18600
+  },
+  "thrust": {
+    "type": "thrust_pct",
+    "available": [
+      {
+        "alt_ft": 0,
+        "thrust_pct": 100,
+        "thrust_kn": 240
+      },
+      {
+        "alt_ft": 10000,
+        "thrust_pct": 100,
+        "thrust_kn": 210
+      },
+      {
+        "alt_ft": 20000,
+        "thrust_pct": 100,
+        "thrust_kn": 175
+      },
+      {
+        "alt_ft": 30000,
+        "thrust_pct": 100,
+        "thrust_kn": 140
+      }
+    ]
+  },
+  "drag": {
+    "base_cd": 0.025,
+    "gear_cd": 0.02,
+    "flaps": [
+      {
+        "state": 0,
+        "cd": 0.0,
+        "cl": 0.3
+      },
+      {
+        "state": 1,
+        "cd": 0.01,
+        "cl": 0.5
+      },
+      {
+        "state": 2,
+        "cd": 0.02,
+        "cl": 0.7
+      },
+      {
+        "state": 3,
+        "cd": 0.035,
+        "cl": 0.95
+      }
+    ]
+  },
+  "fuel": {
+    "burn_kg_per_hr_vs_thrust": [
+      {
+        "thrust_pct": 30,
+        "kg_per_hr": 1600
+      },
+      {
+        "thrust_pct": 60,
+        "kg_per_hr": 2800
+      },
+      {
+        "thrust_pct": 90,
+        "kg_per_hr": 4200
+      },
+      {
+        "thrust_pct": 100,
+        "kg_per_hr": 4700
+      }
+    ]
+  },
+  "performance": {
+    "roc_fpm_vs_weight": [
+      {
+        "weight_kg": 50000,
+        "roc_fpm": 2600
+      },
+      {
+        "weight_kg": 65000,
+        "roc_fpm": 2000
+      },
+      {
+        "weight_kg": 77000,
+        "roc_fpm": 1500
+      }
+    ],
+    "rod_fpm_vs_weight": [
+      {
+        "weight_kg": 50000,
+        "rod_fpm": 2500
+      },
+      {
+        "weight_kg": 77000,
+        "rod_fpm": 1800
+      }
+    ]
+  },
+  "limits": {
+    "stall_ias_kts": 115,
+    "vfe_kts_by_flap": {
+      "1": 230,
+      "2": 215,
+      "3": 200
+    },
+    "best_cruise_mach": 0.78
+  },
+  "atmosphere": {
+    "qnh_hpa": 1013.25,
+    "isa_deviation_c": 0
+  }
+}

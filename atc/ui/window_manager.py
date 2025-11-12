@@ -2,7 +2,7 @@ import pygame
 import multiprocessing
 from constants import (
     WIDTH, HEIGHT,
-    HELP_TEXT,
+    HELP_TEXT, WINDOW_AC_PROFILE,
     WINDOW_HELP, WINDOW_ERROR,
     WINDOW_FLIGHT_PROGRESS, WINDOW_PERFORMANCE
 )
@@ -174,6 +174,8 @@ def _window_process(
         window_size = (int(screen_w * 0.45), int(screen_h * 0.6))
     elif title == WINDOW_ERROR:
         window_size = (int(screen_w * 0.4), int(screen_h * 0.7))
+    elif title == WINDOW_AC_PROFILE:
+        window_size = (int(screen_w * 0.4), int(screen_h * 0.45))
     else:
         window_size = (int(screen_w * 0.4), int(screen_h * 0.5))
 

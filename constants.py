@@ -1,7 +1,9 @@
-import pygame
+import pygame, os
 
 # EXTERNAL / API
 GH_API = "https://raw.githubusercontent.com/lucmcmullan/pyatc/refs/heads/main/version.txt"
+
+
 
 # GLOBAL SIM SETTINGS
 WIDTH, HEIGHT = 1500, 600
@@ -23,6 +25,10 @@ HELPER_LOOKAHEAD_SECONDS = [60, 120, 300]
 HELPER_CONFLICT_THRESHOLD = 0.7
 HELPER_UPDATE_INTERVAL = 2.0
 ML_MODEL_PATH = "models/conflict_model.joblib"
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR))  # pyatc/
+PERF_DATA_DIR = os.path.abspath(os.path.join(PROJECT_ROOT, "data", "performance"))
 
 AI_DECISION_PERIOD = 3.0
 AI_MIN_ALT = 3000
@@ -193,6 +199,7 @@ WINDOW_HELP = "Help"
 WINDOW_PERFORMANCE = "Performance"
 WINDOW_FLIGHT_PROGRESS = "Flight Progress"
 WINDOW_ERROR = "Error"
+WINDOW_AC_PROFILE = "Aircraft Profile"
 
 #  FLIGHT PLAN / TAG LAYOUT
 FPL_MARGIN_X = 10
@@ -283,3 +290,5 @@ NOTES
 
 PyATC © 2025 Luc McMullan
 """
+
+PLANE_TYPES = ["A320", "B747", "E190", "C172"]

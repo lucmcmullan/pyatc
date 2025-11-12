@@ -1,5 +1,5 @@
 import math, pygame
-from atc.utils import heading_to_vec, load_fixes, nm_to_px, wrap_text, calculate_layout
+from atc.utils import heading_to_vec, load_fixes, nm_to_px, wrap_text, calculate_layout, scale_position
 from constants import *
 
 def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None):
@@ -298,3 +298,61 @@ def draw_radar(screen, planes, font, conflicts,
         pygame.draw.rect(screen, (30, 30, 40), bg_rect, border_radius=4)
         pygame.draw.rect(screen, (100, 255, 100), bg_rect, 1, border_radius=4)
         screen.blit(tooltip_text, (bg_rect.x + pad, bg_rect.y + pad))
+
+def hit_test_aircraft(mouse_pos, planes, layout):
+    """Detect which aircraft (if any) the mouse clicked on."""
+    mx, my = mouse_pos
+    for plane in planes:
+        px, py = scale_position(plane.x, plane.y, layout)
+        hit_radius = max(6, int(10 * layout["RING_SCALE"]))  # same as left-click
+        if (px - mx) ** 2 + (py - my) ** 2 <= hit_radius ** 2:
+            return plane
+    return None
+
+def draw_context_menu(screen, font, x, y):
+    """Simple right-click context menu."""
+    options = ["Open Performance Profile", "Set Flaps …", "Toggle Gear"]
+    w, h = 240, 25 * len(options)
+    rect = pygame.Rect(x, y, w, h)
+    pygame.draw.rect(screen, (30, 30, 40), rect, border_radius=6)
+    pygame.draw.rect(screen, (120, 120, 150), rect, 1, border_radius=6)
+    for i, text in enumerate(options):
+        txt = font.render(text, True, (255, 255, 255))
+        screen.blit(txt, (x + 10, y + 5 + i * 25))
+    return rect, options
+
+def draw_aircraft_profile_window(screen, font, planes_or_snapshot, *_):
+    """Detached window showing live performance data."""
+    snap = planes_or_snapshot
+    width, height = screen.get_size()
+    screen.fill((0, 0, 25))
+    if not snap:
+        return
+    # --- Altitude graph ---
+    if "altitude_history" in snap:
+        pts = snap["altitude_history"]
+        if len(pts) >= 2:
+            t0 = pts[0][0]
+            scale_x = width / max(1.0, pts[-1][0] - t0)
+            min_alt = min(a for _, a in pts)
+            max_alt = max(a for _, a in pts)
+            scale_y = (height - 120) / max(1.0, max_alt - min_alt)
+            graph_pts = [
+                (int((t - t0) * scale_x), int(height - 60 - (a - min_alt) * scale_y))
+                for t, a in pts
+            ]
+            if len(graph_pts) >= 2:
+                pygame.draw.lines(screen, (0, 255, 0), False, graph_pts, 2)
+
+    lines = [
+        f"Weight: {snap.get('weight_kg', 0):,.0f} kg",
+        f"Fuel: {snap.get('fuel_kg', 0):,.0f}/{snap.get('fuel_capacity_kg', 0):,.0f} kg",
+        f"Thrust: {snap.get('thrust_pct', 0):.1f} %",
+        f"Flaps: {snap.get('flap_state', 0)}",
+        f"Gear: {'Down' if snap.get('gear_down') else 'Up'}",
+        f"Alt: {snap.get('alt', 0):.0f} ft",
+        f"Spd: {snap.get('spd', 0):.0f} kt",
+    ]
+    for i, txt in enumerate(lines):
+        surf = font.render(txt, True, (255, 255, 255))
+        screen.blit(surf, (10, 10 + i * 20))

@@ -1,0 +1,129 @@
+{
+  "icao": "B747",
+  "mass": {
+    "empty_kg": 183500,
+    "mtow_kg": 396890,
+    "mlw_kg": 285760,
+    "mzf_kg": 248115,
+    "fuel_capacity_kg": 173000
+  },
+  "thrust": {
+    "type": "thrust_pct",
+    "available": [
+      {
+        "alt_ft": 0,
+        "thrust_pct": 100,
+        "thrust_kn": 1104
+      },
+      {
+        "alt_ft": 10000,
+        "thrust_pct": 100,
+        "thrust_kn": 980
+      },
+      {
+        "alt_ft": 20000,
+        "thrust_pct": 100,
+        "thrust_kn": 840
+      },
+      {
+        "alt_ft": 30000,
+        "thrust_pct": 100,
+        "thrust_kn": 700
+      },
+      {
+        "alt_ft": 40000,
+        "thrust_pct": 100,
+        "thrust_kn": 560
+      }
+    ]
+  },
+  "drag": {
+    "base_cd": 0.028,
+    "gear_cd": 0.035,
+    "flaps": [
+      {
+        "state": 0,
+        "cd": 0.0,
+        "cl": 0.35
+      },
+      {
+        "state": 1,
+        "cd": 0.02,
+        "cl": 0.55
+      },
+      {
+        "state": 2,
+        "cd": 0.04,
+        "cl": 0.8
+      },
+      {
+        "state": 3,
+        "cd": 0.07,
+        "cl": 1.1
+      }
+    ]
+  },
+  "fuel": {
+    "burn_kg_per_hr_vs_thrust": [
+      {
+        "thrust_pct": 30,
+        "kg_per_hr": 12000
+      },
+      {
+        "thrust_pct": 60,
+        "kg_per_hr": 22000
+      },
+      {
+        "thrust_pct": 90,
+        "kg_per_hr": 34000
+      },
+      {
+        "thrust_pct": 100,
+        "kg_per_hr": 40000
+      }
+    ]
+  },
+  "performance": {
+    "roc_fpm_vs_weight": [
+      {
+        "weight_kg": 250000,
+        "roc_fpm": 3000
+      },
+      {
+        "weight_kg": 350000,
+        "roc_fpm": 2000
+      },
+      {
+        "weight_kg": 396000,
+        "roc_fpm": 1500
+      }
+    ],
+    "rod_fpm_vs_weight": [
+      {
+        "weight_kg": 250000,
+        "rod_fpm": 2600
+      },
+      {
+        "weight_kg": 350000,
+        "rod_fpm": 2200
+      },
+      {
+        "weight_kg": 396000,
+        "rod_fpm": 1800
+      }
+    ]
+  },
+  "limits": {
+    "stall_ias_kts": 150,
+    "vfe_kts_by_flap": {
+      "1": 275,
+      "2": 255,
+      "3": 230
+    },
+    "best_cruise_mach": 0.84
+  },
+  "atmosphere": {
+    "qnh_hpa": 1013.25,
+    "isa_deviation_c": 0
+  }
+}

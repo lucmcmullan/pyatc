@@ -1,10 +1,12 @@
-import math, dataclasses, time, random
+import math, dataclasses, time, random, json, os
 from typing import List, Optional, TYPE_CHECKING
 from atc.utils import (
     normalize_hdg, heading_to_vec, nm_to_px, calculate_layout,
     get_heading_to_fix, distance_to_fix, load_fixes, shortest_turn_dir, px_to_nm
 )
 from atc.ai.voice import speak
+from constants import PERF_DATA_DIR, PLANE_TYPES
+from atc.utils import isa_density_at_alt_ft, interp_curve_xy
 from constants import (
     WIDTH, HEIGHT, AIRLINES,
     DEFAULT_CLIMB_RATE_FPM, EXPEDITE_CLIMB_RATE_FPM,
@@ -26,6 +28,57 @@ from .runway_v2 import get_runway, get_airport, all_runways
 if TYPE_CHECKING:
     from .runway_v2 import Runway
 
+@dataclasses.dataclass
+class PerformanceProfile:
+    icao: str
+    mass: dict
+    thrust: dict
+    drag: dict
+    fuel: dict
+    performance: dict
+    limits: dict = dataclasses.field(default_factory=dict)
+    atmosphere: dict = dataclasses.field(default_factory=dict)
+
+    @staticmethod
+    def load_from_json(path: str) -> Optional["PerformanceProfile"]:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return PerformanceProfile(
+                icao=data.get("icao", "UNKNOWN"),
+                mass=data.get("mass", {}),
+                thrust=data.get("thrust", {}),
+                drag=data.get("drag", {}),
+                fuel=data.get("fuel", {}),
+                performance=data.get("performance", {}),
+                limits=data.get("limits", {}),
+                atmosphere=data.get("atmosphere", {}),
+            )
+        except Exception:
+            return None
+
+class PhysicsEngine:
+    def __init__(self, profile: PerformanceProfile):
+        self.p = profile
+
+    def available_thrust_kn(self, alt_ft: float) -> float:
+        pts = self.p.thrust.get("available", [])
+        if not pts:
+            return 0.0
+        thrust_key = next((k for k in pts[0].keys() if k.endswith("kn")), "thrust_kn")
+        return interp_curve_xy(pts, alt_ft, "alt_ft", thrust_key) or 0.0
+
+    def fuel_flow_kg_per_hr(self, thrust_pct: float) -> float:
+        pts = self.p.fuel.get("burn_kg_per_hr_vs_thrust", [])
+        return interp_curve_xy(pts, thrust_pct, "thrust_pct", "kg_per_hr") or 0.0
+
+    def roc_fpm(self, weight_kg: float) -> float:
+        pts = self.p.performance.get("roc_fpm_vs_weight", [])
+        return interp_curve_xy(pts, weight_kg, "weight_kg", "roc_fpm") or 0.0
+
+    def rod_fpm(self, weight_kg: float) -> float:
+        pts = self.p.performance.get("rod_fpm_vs_weight", [])
+        return interp_curve_xy(pts, weight_kg, "weight_kg", "rod_fpm") or 0.0
 
 @dataclasses.dataclass
 class Aircraft:
@@ -36,6 +89,7 @@ class Aircraft:
     spd: float
     alt: float
     dest_alt: int
+    aircraft_type: Optional[str] = None
     ai_controlled: bool = False
     dest_hdg: Optional[float] = None
     state: str = "AIRBORNE"
@@ -54,6 +108,10 @@ class Aircraft:
     pending_command_timer: float = 0.0
     on_runway: bool = False
     assigned_runway: Optional["Runway"] = None
+    altitude_history: list = dataclasses.field(default_factory=list)
+    history_timer: float = 0.0
+    HISTORY_INTERVAL: float = 1.0
+    HISTORY_LIMIT_S: float = 600.0 
 
     _alt_start: float = dataclasses.field(init=False, default=0)
     _alt_target: float = dataclasses.field(init=False, default=0)
@@ -65,6 +123,48 @@ class Aircraft:
     def __post_init__(self):
         self._alt_start = self.alt
         self._alt_target = self.dest_alt
+
+        # === Load aircraft performance profile ===
+        self._use_new_physics = False
+        self.aircraft_type = getattr(self, "aircraft_type", None)
+
+        try:
+            if self.aircraft_type:
+                # Build absolute path relative to this file
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                perf_dir = os.path.abspath(os.path.join(base_dir, "..", "data", "performance"))
+                path = os.path.join(perf_dir, f"{self.aircraft_type}.json")
+
+                # Case-insensitive fallback
+                if not os.path.isfile(path):
+                    lower_path = os.path.join(perf_dir, f"{self.aircraft_type.lower()}.json")
+                    if os.path.isfile(lower_path):
+                        path = lower_path
+
+                if os.path.isfile(path):
+                    profile = PerformanceProfile.load_from_json(path)
+                    if profile:
+                        self._perf_profile = profile
+                        self._physics = PhysicsEngine(profile)
+
+                        # --- Runtime parameters ---
+                        empty_kg = profile.mass.get("empty_kg", 0)
+                        self.fuel_capacity_kg = profile.mass.get("fuel_capacity_kg", 10000)
+                        self.fuel_kg = min(self.fuel_capacity_kg, 0.5 * self.fuel_capacity_kg)
+                        self.weight_kg = empty_kg + self.fuel_kg
+                        self.flap_state = 0
+                        self.gear_down = False
+                        self.thrust_pct = 60.0
+                        self._use_new_physics = True
+                        print(f"[INFO] Loaded performance profile for {self.aircraft_type}")
+                    else:
+                        print(f"[WARN] Failed to parse JSON for {self.aircraft_type}")
+                else:
+                    print(f"[WARN] No JSON found for {self.aircraft_type} at {path}")
+            else:
+                print(f"[WARN] Aircraft type not set for {self.callsign}")
+        except Exception as e:
+            print(f"[ERROR] Performance load failed for {self.callsign}: {e}")
 
     def set_altitude_target(self, target_alt: int):
         self._alt_start = self.alt
@@ -212,9 +312,12 @@ class Aircraft:
         if self.dest_hdg is not None:
             self.turn_towards(self.dest_hdg, dt)
 
-        if self.dest_spd:
+        if self.dest_spd is not None and not getattr(self, "_use_new_physics", False):
             diff = self.dest_spd - self.spd
             self.spd += max(min(diff, SPEED_CHANGE_RATE_KTS_PER_SEC * dt), -SPEED_CHANGE_RATE_KTS_PER_SEC * dt)
+
+        if getattr(self, "_use_new_physics", False):
+            self._physics_update(dt)
 
         if self.state in ("LANDING", "LANDED") and self.alt <= 20:
             self.spd = max(0, self.spd - LANDING_DECEL_RATE_KTS_PER_SEC * dt)
@@ -250,6 +353,77 @@ class Aircraft:
                         if self.current_runway.active_aircraft == self:
                             self.current_runway.release()
                         self.current_runway = None
+
+        if getattr(self, "_use_new_physics", False):
+            self.history_timer += dt
+            if self.history_timer >= self.HISTORY_INTERVAL:
+                self.history_timer = 0.0
+                self.altitude_history.append((time.time(), self.alt))
+                # Trim history older than HISTORY_LIMIT_S
+                cutoff = time.time() - self.HISTORY_LIMIT_S
+                self.altitude_history = [
+                    (t, a) for (t, a) in self.altitude_history if t >= cutoff
+                ]
+
+    def _physics_update(self, dt: float):
+        target_spd = self.dest_spd if self.dest_spd is not None else self.spd
+        spd_err = (target_spd - self.spd)
+        self.thrust_pct = max(0.0, min(100.0, getattr(self, "thrust_pct", 60.0) + 0.5 * spd_err * dt))
+
+        # Atmosphere & thrust
+        qnh = self._perf_profile.atmosphere.get("qnh_hpa", 1013.25)
+        isa_dev = self._perf_profile.atmosphere.get("isa_deviation_c", 0.0)
+        rho = isa_density_at_alt_ft(self.alt, qnh, isa_dev)
+
+        thrust_available_kn = self._physics.available_thrust_kn(self.alt)
+        thrust_kn = thrust_available_kn * (self.thrust_pct / 100.0)
+
+        # Drag (quadratic) with flap/gear modifiers
+        base_cd = self._perf_profile.drag.get("base_cd", 0.03)
+        gear_cd = self._perf_profile.drag.get("gear_cd", 0.02) if getattr(self, "gear_down", False) else 0.0
+        flap_cd = 0.0
+        for f in self._perf_profile.drag.get("flaps", []):
+            if f.get("state") == getattr(self, "flap_state", 0):
+                flap_cd = f.get("cd", 0.0)
+                break
+        cd = base_cd + gear_cd + flap_cd
+
+        # Convert speed (kts) to m/s
+        v_ms = max(0.0, self.spd) * 0.514444
+        area_ref = 122.0  # m^2 typical narrowbody; tune per-type in future
+        drag_n = 0.5 * rho * (v_ms ** 2) * cd * area_ref
+        thrust_n = thrust_kn * 1000.0
+
+        # Longitudinal acceleration (very simplified)
+        acc_ms2 = (thrust_n - drag_n) / max(1.0, self.weight_kg)
+        acc_ms2 = max(-5.0, min(5.0, acc_ms2))  # clamp to keep sim stable
+
+        # Update speed (m/s -> kts)
+        self.spd = max(0.0, self.spd + (acc_ms2 * 1.94384) * dt)
+
+        # Vertical rate from performance tables based on current weight and target altitude
+        if self.dest_alt is not None and abs(self.dest_alt - self.alt) > 50:
+            climbing = self.dest_alt > self.alt
+            if climbing:
+                vs_fpm = self._physics.roc_fpm(self.weight_kg)
+            else:
+                vs_fpm = -self._physics.rod_fpm(self.weight_kg)
+        else:
+            vs_fpm = 0.0
+
+        # Integrate altitude and clamp to target if overshoot
+        self.alt += vs_fpm * dt / 60.0
+        if (vs_fpm > 0 and self.alt > self.dest_alt) or (vs_fpm < 0 and self.alt < self.dest_alt):
+            self.alt = float(self.dest_alt)
+
+        # Fuel burn
+        ff_kg_hr = self._physics.fuel_flow_kg_per_hr(self.thrust_pct)
+        burned = ff_kg_hr * dt / 3600.0
+        self.fuel_kg = max(0.0, self.fuel_kg - burned)
+
+        # Update gross weight
+        empty_kg = self._perf_profile.mass.get("empty_kg", 0)
+        self.weight_kg = empty_kg + self.fuel_kg
 
     def turn_towards(self, tgt, dt):
         cur = normalize_hdg(self.hdg)
@@ -368,6 +542,7 @@ def spawn_random_plane(i: int) -> Aircraft:
         spd,
         alt,
         dest_alt=DEFAULT_DEST_ALT,
+        aircraft_type=random.choice(PLANE_TYPES)
     )
 
     plane.on_runway = on_runway

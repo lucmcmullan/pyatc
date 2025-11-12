@@ -1,0 +1,129 @@
+{
+  "icao": "E190",
+  "mass": {
+    "empty_kg": 28600,
+    "mtow_kg": 51800,
+    "mlw_kg": 45800,
+    "mzf_kg": 40800,
+    "fuel_capacity_kg": 13000
+  },
+  "thrust": {
+    "type": "thrust_pct",
+    "available": [
+      {
+        "alt_ft": 0,
+        "thrust_pct": 100,
+        "thrust_kn": 164
+      },
+      {
+        "alt_ft": 10000,
+        "thrust_pct": 100,
+        "thrust_kn": 145
+      },
+      {
+        "alt_ft": 20000,
+        "thrust_pct": 100,
+        "thrust_kn": 125
+      },
+      {
+        "alt_ft": 30000,
+        "thrust_pct": 100,
+        "thrust_kn": 105
+      },
+      {
+        "alt_ft": 40000,
+        "thrust_pct": 100,
+        "thrust_kn": 85
+      }
+    ]
+  },
+  "drag": {
+    "base_cd": 0.026,
+    "gear_cd": 0.02,
+    "flaps": [
+      {
+        "state": 0,
+        "cd": 0.0,
+        "cl": 0.32
+      },
+      {
+        "state": 1,
+        "cd": 0.012,
+        "cl": 0.52
+      },
+      {
+        "state": 2,
+        "cd": 0.025,
+        "cl": 0.75
+      },
+      {
+        "state": 3,
+        "cd": 0.04,
+        "cl": 1.0
+      }
+    ]
+  },
+  "fuel": {
+    "burn_kg_per_hr_vs_thrust": [
+      {
+        "thrust_pct": 30,
+        "kg_per_hr": 1600
+      },
+      {
+        "thrust_pct": 60,
+        "kg_per_hr": 3000
+      },
+      {
+        "thrust_pct": 90,
+        "kg_per_hr": 4500
+      },
+      {
+        "thrust_pct": 100,
+        "kg_per_hr": 5200
+      }
+    ]
+  },
+  "performance": {
+    "roc_fpm_vs_weight": [
+      {
+        "weight_kg": 35000,
+        "roc_fpm": 3500
+      },
+      {
+        "weight_kg": 45000,
+        "roc_fpm": 2600
+      },
+      {
+        "weight_kg": 51800,
+        "roc_fpm": 1800
+      }
+    ],
+    "rod_fpm_vs_weight": [
+      {
+        "weight_kg": 35000,
+        "rod_fpm": 2800
+      },
+      {
+        "weight_kg": 45000,
+        "rod_fpm": 2300
+      },
+      {
+        "weight_kg": 51800,
+        "rod_fpm": 1900
+      }
+    ]
+  },
+  "limits": {
+    "stall_ias_kts": 118,
+    "vfe_kts_by_flap": {
+      "1": 230,
+      "2": 215,
+      "3": 200
+    },
+    "best_cruise_mach": 0.78
+  },
+  "atmosphere": {
+    "qnh_hpa": 1013.25,
+    "isa_deviation_c": 0
+  }
+}

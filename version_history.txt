@@ -170,3 +170,17 @@
             - Fixed aircraft gaining altitude "on ground"
             - Fixed aircraft spawning off-centre to runways
             - Fixed spawn count overriding max traffic number
+
+    2.4.0 - Physics
+        - Physics rewrite in preparation for further updates
+
+        2.4.1 - Phase 1
+            - Added PerformanceProfile and PhysicsEngine to aircraft objects
+            - Performance profiles now available in data/performance
+            - PP built to resemble real-world aircraft
+
+        2.4.2 - Phase 2 + 3
+            - Altitude logging for aircraft class
+            - Right clicking shows performance profile, altitude change,
+                fuel, weight, speed, etcetera
+            

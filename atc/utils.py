@@ -185,3 +185,44 @@ def scale_position(x, y, layout: dict) -> tuple[int, int]:
     scale_x = layout["RADAR_WIDTH"] / WIDTH
     scale_y = layout["RADAR_HEIGHT"] / HEIGHT
     return int(x * scale_x), int(y * scale_y)
+
+def isa_density_at_alt_ft(alt_ft: float, qnh_hpa: float = 1013.25, isa_deviation_c: float = 0.0) -> float:
+    """
+    Return air density (kg/m^3) using a simple ISA model up to the tropopause.
+    """
+    import math
+    alt_m = alt_ft * 0.3048
+    # ISA sea level
+    rho0 = 1.225    # kg/m^3
+    T0 = 288.15 + isa_deviation_c  # K
+    L = 0.0065     # K/m
+    g = 9.80665    # m/s^2
+    R = 287.058    # J/(kg·K)
+    if alt_m < 11000:
+        T = T0 - L * alt_m
+        rho = rho0 * (T / T0) ** ((g / (R * L)) - 1.0)
+    else:
+        # Isothermal approx above 11 km
+        T = T0 - L * 11000
+        rho = rho0 * (T / T0) ** (g / (R * L) - 1.0) * math.exp(-(alt_m - 11000) * g / (R * T))
+    return rho
+
+def lerp(x0, y0, x1, y1, x):
+    if x1 == x0:
+        return y0
+    t = max(0.0, min(1.0, (x - x0) / (x1 - x0)))
+    return y0 + t * (y1 - y0)
+
+def interp_curve_xy(points, x, keyx, keyy):
+    """Linear interpolation over a list of dict points [{keyx:..., keyy:...}, ...]."""
+    if not points:
+        return None
+    pts = sorted(points, key=lambda p: p[keyx])
+    if x <= pts[0][keyx]:
+        return pts[0][keyy]
+    if x >= pts[-1][keyx]:
+        return pts[-1][keyy]
+    for a, b in zip(pts, pts[1:]):
+        if a[keyx] <= x <= b[keyx]:
+            return lerp(a[keyx], a[keyy], b[keyx], b[keyy], x)
+    return pts[-1][keyy]

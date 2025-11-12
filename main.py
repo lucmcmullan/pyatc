@@ -15,7 +15,7 @@ from atc.ai.voice import speak
 from atc.ai.controller import AIController
 from atc.objects.runway_v2 import all_runways
 from atc.objects.aircraft_v2 import spawn_random_plane
-from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_log
+from atc.radar import draw_radar, draw_performance_menu, draw_flight_progress_log, draw_aircraft_profile_window, hit_test_aircraft
 from atc.utils import (
     check_conflicts, calculate_layout, get_current_version,
     ensure_pygame_ready, scale_position
@@ -31,7 +31,7 @@ from constants import (
     WINDOW_MAIN, FUNCTION_KEYS, WINDOW_PERFORMANCE, HELP_TEXT,
     COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT, WINDOW_ERROR, TRAFFIC_MAX,
     AI_TRAFFIC, WINDOW_HELP, ACK_DELAY_RANGE, RUNWAY_TAKEOFF_DELAY_S,
-    MSG_TAKEOFF_ACK, MSG_REQUEST_TAKEOFF, SPAWN_INTERVAL_S
+    MSG_TAKEOFF_ACK, MSG_REQUEST_TAKEOFF, SPAWN_INTERVAL_S, WINDOW_AC_PROFILE
 )
 
 parser = CommandParser()
@@ -264,7 +264,6 @@ def handle_aircraft_spawning(state, dt):
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S UTC"),
             })
 
-            # voice & delayed response from controller
             schedule_delayed_ack(state, new_plane.callsign, MSG_TAKEOFF_ACK.format(cs=new_plane.callsign), RUNWAY_TAKEOFF_DELAY_S, prefix_callsign=False)
             print(f"[RUNWAY] {new_plane.callsign} spawned on runway {rwy}, requesting takeoff.")
 
@@ -275,7 +274,6 @@ def handle_mouse_input(event, state, layout):
     mx, my = event.pos
     scale = layout["RING_SCALE"]
 
-    # left-click on aircraft
     if event.button == 1:
         for p in state["planes"]:
             px, py = scale_position(p.x, p.y, layout)
@@ -293,7 +291,22 @@ def handle_mouse_input(event, state, layout):
             state["input_str"] = ""
             state["cursor_pos"] = 0
 
-    # scroll wheel
+    elif event.button == 3:
+        plane = hit_test_aircraft(event.pos, state["planes"], layout)
+        if plane:
+            if getattr(plane, "_use_new_physics", False):
+                title = f"{WINDOW_AC_PROFILE} — {plane.callsign}"
+                open_detached_window(
+                    title,
+                    draw_aircraft_profile_window,
+                    live=True
+                )
+                print(f"[INFO] Opened Performance Profile window for {plane.callsign}")
+            else:
+                print("No physics enabled for plane")
+        else:
+            print("No valid plane")
+
     elif event.button == 4:
         state["radio_scroll"] = max(0, state["radio_scroll"] - 1)
     elif event.button == 5:
@@ -309,7 +322,22 @@ def update_simulation(state, dt):
 
     state["conflicts"] = check_conflicts(state["planes"])
 
-    # sync live data to detachable windows
+    for plane in state["planes"]:
+        if getattr(plane, "_use_new_physics", False):
+            snap = {
+                "callsign": plane.callsign,
+                "alt": plane.alt,
+                "spd": plane.spd,
+                "weight_kg": getattr(plane, "weight_kg", 0),
+                "fuel_kg": getattr(plane, "fuel_kg", 0),
+                "fuel_capacity_kg": getattr(plane, "fuel_capacity_kg", 0),
+                "thrust_pct": getattr(plane, "thrust_pct", 0),
+                "flap_state": getattr(plane, "flap_state", 0),
+                "gear_down": getattr(plane, "gear_down", False),
+                "altitude_history": getattr(plane, "altitude_history", []),
+            }
+            update_shared_state(f"{WINDOW_AC_PROFILE} — {plane.callsign}", snap)
+
     update_shared_state(WINDOW_FLIGHT_PROGRESS, [
         {"callsign": p.callsign, "alt": p.alt, "spd": p.spd, "hdg": p.hdg, "state": p.state}
         for p in state["planes"]

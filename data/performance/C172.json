@@ -1,0 +1,124 @@
+{
+  "icao": "C172",
+  "mass": {
+    "empty_kg": 767,
+    "mtow_kg": 1110,
+    "mlw_kg": 1110,
+    "mzf_kg": 1010,
+    "fuel_capacity_kg": 180
+  },
+  "thrust": {
+    "type": "thrust_pct",
+    "available": [
+      {
+        "alt_ft": 0,
+        "thrust_pct": 100,
+        "thrust_kn": 2.0
+      },
+      {
+        "alt_ft": 5000,
+        "thrust_pct": 100,
+        "thrust_kn": 1.7
+      },
+      {
+        "alt_ft": 10000,
+        "thrust_pct": 100,
+        "thrust_kn": 1.45
+      },
+      {
+        "alt_ft": 15000,
+        "thrust_pct": 100,
+        "thrust_kn": 1.2
+      }
+    ]
+  },
+  "drag": {
+    "base_cd": 0.03,
+    "gear_cd": 0.01,
+    "flaps": [
+      {
+        "state": 0,
+        "cd": 0.0,
+        "cl": 0.6
+      },
+      {
+        "state": 1,
+        "cd": 0.02,
+        "cl": 0.9
+      },
+      {
+        "state": 2,
+        "cd": 0.045,
+        "cl": 1.2
+      },
+      {
+        "state": 3,
+        "cd": 0.08,
+        "cl": 1.45
+      }
+    ]
+  },
+  "fuel": {
+    "burn_kg_per_hr_vs_thrust": [
+      {
+        "thrust_pct": 30,
+        "kg_per_hr": 9
+      },
+      {
+        "thrust_pct": 60,
+        "kg_per_hr": 18
+      },
+      {
+        "thrust_pct": 90,
+        "kg_per_hr": 27
+      },
+      {
+        "thrust_pct": 100,
+        "kg_per_hr": 30
+      }
+    ]
+  },
+  "performance": {
+    "roc_fpm_vs_weight": [
+      {
+        "weight_kg": 900,
+        "roc_fpm": 800
+      },
+      {
+        "weight_kg": 1000,
+        "roc_fpm": 700
+      },
+      {
+        "weight_kg": 1110,
+        "roc_fpm": 600
+      }
+    ],
+    "rod_fpm_vs_weight": [
+      {
+        "weight_kg": 900,
+        "rod_fpm": 900
+      },
+      {
+        "weight_kg": 1000,
+        "rod_fpm": 850
+      },
+      {
+        "weight_kg": 1110,
+        "rod_fpm": 800
+      }
+    ]
+  },
+  "limits": {
+    "stall_ias_kts": 48,
+    "vfe_kts_by_flap": {
+      "1": 110,
+      "2": 95,
+      "3": 85
+    },
+    "best_cruise_mach": 0.2
+  },
+  "atmosphere": {
+    "qnh_hpa": 1013.25,
+    "isa_deviation_c": 0
+  }
+}
