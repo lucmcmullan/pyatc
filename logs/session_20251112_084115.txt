@@ -1,0 +1,5 @@
+BA905: roger BA905, hold position, standby for takeoff clearance
+W9388: Cleared for takeoff runway 27r, climb to 200 feet, maintain 5000 knots, Wizz Go 388
+U2266: roger U2266, hold position, standby for takeoff clearance
+RK388: roger RK388, hold position, standby for takeoff clearance
+W9843: roger W9843, hold position, standby for takeoff clearance

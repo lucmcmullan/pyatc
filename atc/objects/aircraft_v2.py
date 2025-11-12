@@ -12,16 +12,16 @@ from constants import (
     ALTITUDE_STABILISE_DECAY, ALTITUDE_STABILISE_FREQ,
     ALTITUDE_STABILISE_AMPLITUDE, ALTITUDE_STABILISE_END_THRESHOLD,
     TURN_RATE_DEG_PER_SEC, SPEED_CHANGE_RATE_KTS_PER_SEC,
-    LANDING_DECEL_RATE_KTS_PER_SEC,
-    TAKEOFF_RELEASE_ALT_FT, TAKEOFF_RELEASE_RATIO,
+    LANDING_DECEL_RATE_KTS_PER_SEC, RUNWAY_SPAWN_PROBABILITY,
+    TAKEOFF_RELEASE_ALT_FT, TAKEOFF_RELEASE_RATIO, RUNWAYS,
     LANDING_TOUCHDOWN_ALT_FT, LANDING_ROLLOUT_MIN_SPEED,
-    LANDING_ROLLOUT_MAX_TIME, COMMAND_DELAY_RANGE,
+    LANDING_ROLLOUT_MAX_TIME, COMMAND_DELAY_RANGE, RUNWAY_SPAWN_ALT_FT,
     SPAWN_MARGIN_BASE, SPAWN_HEADING_NORTH, SPAWN_HEADING_SOUTH_1,
     SPAWN_HEADING_SOUTH_2, SPAWN_HEADING_EAST, SPAWN_HEADING_WEST,
     SPAWN_SPEEDS, SPAWN_ALTS, DEFAULT_DEST_ALT
 )
 from .command import Command
-from .runway_v2 import get_runway, get_airport
+from .runway_v2 import get_runway, get_airport, all_runways
 
 if TYPE_CHECKING:
     from .runway_v2 import Runway
@@ -52,6 +52,8 @@ class Aircraft:
     touchdown_time: Optional[float] = None
     hold_timer: float = 0.0
     pending_command_timer: float = 0.0
+    on_runway: bool = False
+    assigned_runway: Optional["Runway"] = None
 
     _alt_start: float = dataclasses.field(init=False, default=0)
     _alt_target: float = dataclasses.field(init=False, default=0)
@@ -175,6 +177,11 @@ class Aircraft:
                 self.command_queue.pop(0)
                 self.pending_command_timer = 0.0
 
+        if self.on_runway and self.state in ("TAKEOFF_PENDING", "ON_RUNWAY"):
+            self.alt = RUNWAY_SPAWN_ALT_FT
+            self.spd = 0
+            return
+
         if self._alt_start_time is not None:
             elapsed = time.time() - self._alt_start_time
             self._alt_duration = max(self._alt_duration, ALTITUDE_INTERPOLATION_MIN_DURATION)
@@ -266,40 +273,110 @@ class Aircraft:
 
 
 def spawn_random_plane(i: int) -> Aircraft:
+    """
+    Spawns aircraft either along the radar edge (normal) or occasionally
+    directly on a runway, ready to request takeoff.
+    """
     layout = calculate_layout(WIDTH, HEIGHT)
     radar_width = layout["RADAR_WIDTH"]
     radar_height = layout["RADAR_HEIGHT"]
     margin = int(SPAWN_MARGIN_BASE * (radar_width / 1500))
-    edge = random.choice("NSEW")
+    edge_offset = int(margin * 0.8)
 
-    if edge == "N":
-        x = random.randint(margin, radar_width - margin)
-        y = margin
-        hdg = random.randint(*SPAWN_HEADING_NORTH)
-    elif edge == "S":
-        x = random.randint(margin, radar_width - margin)
-        y = radar_height - margin
-        hdg = random.randint(*SPAWN_HEADING_SOUTH_1) if random.random() < 0.5 else random.randint(*SPAWN_HEADING_SOUTH_2)
-    elif edge == "E":
-        x = radar_width - margin
-        y = random.randint(margin, radar_height - margin)
-        hdg = random.randint(*SPAWN_HEADING_EAST)
+    spawn_on_runway = random.random() < RUNWAY_SPAWN_PROBABILITY
+
+    # ======================================================
+    # 🛫 1️⃣  Get real runway objects if we’re spawning on one
+    # ======================================================
+    if spawn_on_runway:
+        available_runways = all_runways()
+        if not available_runways:
+            spawn_on_runway = False
+        else:
+            rwy_obj = random.choice(available_runways)
+
+    # ======================================================
+    # 🛫 2️⃣  Runway-based spawn logic
+    # ======================================================
+    if spawn_on_runway:
+        # Use pre-built, scaled runway object
+        cx, cy = rwy_obj.x, rwy_obj.y
+        bearing_rad = math.radians(rwy_obj.bearing)
+        half_len_px = nm_to_px(rwy_obj.length_nm) / 2
+
+        # Spawn along runway centerline, near threshold
+        spawn_dist = half_len_px * 0.9
+        x = cx - math.sin(bearing_rad) * spawn_dist
+        y = cy + math.cos(bearing_rad) * spawn_dist
+
+        # Tiny lateral offset (± few px) for variety
+        lateral = random.uniform(-8, 8)
+        x += math.cos(bearing_rad) * lateral
+        y += math.sin(bearing_rad) * lateral
+
+        hdg = int(rwy_obj.bearing)
+        alt = RUNWAY_SPAWN_ALT_FT
+        spd = 0
+        on_runway = True
+        assigned_runway = rwy_obj.name
+
+        # Optional: flip direction 50% of time (use reciprocal threshold)
+        if random.random() < 0.5:
+            hdg = (hdg + 180) % 360
+            x = cx + math.sin(bearing_rad) * spawn_dist
+            y = cy - math.cos(bearing_rad) * spawn_dist
+
+    # ======================================================
+    # ✈️ 3️⃣  Normal (airborne) spawn fallback
+    # ======================================================
     else:
-        x = margin
-        y = random.randint(margin, radar_height - margin)
-        hdg = random.randint(*SPAWN_HEADING_WEST)
+        edge = random.choice("NSEW")
+        if edge == "N":
+            x = random.randint(margin, radar_width - margin)
+            y = -edge_offset
+            hdg = random.randint(*SPAWN_HEADING_NORTH)
+        elif edge == "S":
+            x = random.randint(margin, radar_width - margin)
+            y = radar_height + edge_offset
+            hdg = random.randint(*SPAWN_HEADING_SOUTH_1) if random.random() < 0.5 else random.randint(*SPAWN_HEADING_SOUTH_2)
+        elif edge == "E":
+            x = radar_width + edge_offset
+            y = random.randint(margin, radar_height - margin)
+            hdg = random.randint(*SPAWN_HEADING_EAST)
+        else:
+            x = -edge_offset
+            y = random.randint(margin, radar_height - margin)
+            hdg = random.randint(*SPAWN_HEADING_WEST)
+        alt = random.choice(SPAWN_ALTS)
+        spd = random.choice(SPAWN_SPEEDS)
+        on_runway = False
+        assigned_runway = None
 
+    # ======================================================
+    # 🧠 4️⃣  Aircraft creation + state setup
+    # ======================================================
     airline_name = random.choice(list(AIRLINES.keys()))
     airline = AIRLINES[airline_name]
     iata = airline["IATA"] or airline["ICAO"]
     flight_number = random.randint(1, 999)
     cs = f"{iata}{flight_number:03d}"
 
-    return Aircraft(
+    plane = Aircraft(
         cs,
         x, y,
         normalize_hdg(hdg),
-        random.choice(SPAWN_SPEEDS),
-        random.choice(SPAWN_ALTS),
-        dest_alt=DEFAULT_DEST_ALT
+        spd,
+        alt,
+        dest_alt=DEFAULT_DEST_ALT,
     )
+
+    plane.on_runway = on_runway
+    plane.assigned_runway = assigned_runway
+
+    if plane.on_runway:
+        plane.state = "TAKEOFF_PENDING"
+        plane.dest_alt = RUNWAY_SPAWN_ALT_FT
+    else:
+        plane.state = "AIRBORNE"
+
+    return plane

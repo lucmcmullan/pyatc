@@ -13,3 +13,16 @@ Traceback (most recent call last):
 AttributeError: 'str' object has no attribute 'startswitch'
 
 ------------------------------------------------------------
+[2025-11-11 14:13:53]
+Traceback (most recent call last):
+  File "D:\Personal\pyatc\main.py", line 456, in <module>
+    main()
+  File "D:\Personal\pyatc\main.py", line 403, in main
+    handle_aircraft_spawning(state, dt)
+  File "D:\Personal\pyatc\main.py", line 231, in handle_aircraft_spawning
+    new_id = max((p.id for p in state["planes"]), default=0) + 1
+  File "D:\Personal\pyatc\main.py", line 231, in <genexpr>
+    new_id = max((p.id for p in state["planes"]), default=0) + 1
+AttributeError: 'Aircraft' object has no attribute 'id'
+
+------------------------------------------------------------

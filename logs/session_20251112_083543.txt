@@ -1,0 +1,12 @@
+BA805: roger BA805, hold position, standby for takeoff clearance
+BA400: roger BA400, hold position, standby for takeoff clearance
+BA805: Climb and maintain five thousand, Speedbird 805
+BA805: Takeoff clearance missing parameters
+BA347: roger BA347, hold position, standby for takeoff clearance
+BA805: Takeoff clearance missing parameters
+BA805: Takeoff clearance missing parameters
+U2183: roger U2183, hold position, standby for takeoff clearance
+BA381: roger BA381, hold position, standby for takeoff clearance
+LM547: roger LM547, hold position, standby for takeoff clearance
+BA913: roger BA913, hold position, standby for takeoff clearance
+BA805: Unable, runway 200 not found

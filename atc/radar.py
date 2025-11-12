@@ -17,10 +17,6 @@ def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None):
     title = font.render("FLIGHT PROGRESS LOG", True, COLOUR_FPL_TITLE)
     screen.blit(title, (panel_x + 10, panel_y + 10))
 
-    expand_icon = pygame.Rect(
-        panel_x + panel_w - EXPAND_ICON_OFFSET, panel_y + EXPAND_ICON_PADDING, *EXPAND_ICON_SIZE
-    )
-
     y = panel_y + 35
     for ac in planes_or_snapshot:
         state = ac.get("state", "UNKNOWN").upper()
@@ -54,7 +50,7 @@ def draw_flight_progress_log(screen, font, planes_or_snapshot, layout=None):
         screen.blit(font.render(label, True, COLOUR_LEGEND_TEXT), (panel_x + 30, legend_y - 2))
         legend_y += 18
 
-    return {"expand_icon": expand_icon}
+    return
 
 
 def draw_aircraft(screen, font, plane, active=False, layout=None):
@@ -138,7 +134,6 @@ def draw_performance_menu(screen, font, planes_or_snapshot, *args, **kwargs):
     surf = pygame.Surface((width, height), pygame.SRCALPHA)
     surf.fill(COLOUR_PERF_BG)
 
-    expand_rect = pygame.Rect(width - EXPAND_ICON_OFFSET, 8, *EXPAND_ICON_SIZE)
 
     y = 10
     for line in lines:
@@ -146,13 +141,13 @@ def draw_performance_menu(screen, font, planes_or_snapshot, *args, **kwargs):
         y += 22
 
     screen.blit(surf, (10, 10))
-    return {"expand_icon": expand_rect.move(10, 10)}
+    return
 
 def draw_conflict_indicator(a, b, lat, vert, screen, font, radar_rect, cy):
     msg = f"CONFLICT {a.callsign}-{b.callsign} {lat:.1f}NM {vert:.0f}FT"
     screen.blit(font.render(msg, True, COLOUR_CONFLICT), (radar_rect.left + 5, cy))
 
-def draw_radar(screen, planes, font, messages, conflicts,
+def draw_radar(screen, planes, font, conflicts,
                radio_log=None, active_cs=None, selected_plane=None, radio_scroll=0,
                runways=None):
 
@@ -169,7 +164,6 @@ def draw_radar(screen, planes, font, messages, conflicts,
         for rw in runways:
             rw.draw(screen, font)
 
-
     fixes = load_fixes(layout)
     for name, position in fixes.items():
         x, y = position["x"], position["y"]
@@ -178,13 +172,12 @@ def draw_radar(screen, planes, font, messages, conflicts,
         for nm in range(*RADAR_FIX_RING_SPACING_NM):
             pixel = int(nm_to_px(nm) * layout["RING_SCALE"])
             pygame.draw.circle(screen, COLOUR_FIX_RING, (x, y), pixel, 1)
-
             label = font.render(f"{nm}", True, COLOUR_FIX_TEXT)
             label_offset = int(8 * layout["RING_SCALE"])
             screen.blit(label, (x + pixel + 4, y - label_offset))
 
         for deg in range(0, 360, RADAR_HEADING_INTERVAL_DEG):
-            rad = math.radians(deg) 
+            rad = math.radians(deg)
             length = nm_to_px(RADAR_LINE_RANGE_NM) * layout["RING_SCALE"]
             dx = math.sin(rad) * length
             dy = -math.cos(rad) * length
@@ -199,20 +192,10 @@ def draw_radar(screen, planes, font, messages, conflicts,
     for radius in range(RADAR_RING_SPACING, RADAR_RING_MAX_RADIUS, RADAR_RING_SPACING):
         pygame.draw.circle(screen, COLOUR_RADAR_GRID, RADAR_CENTER, int(radius * scale), 1)
 
-    pygame.draw.line(
-        screen,
-        COLOUR_RADAR_GRID,
-        (radar_center[0], radar_rect.top),
-        (radar_center[0], radar_rect.bottom),
-        1,
-    )
-    pygame.draw.line(
-        screen,
-        COLOUR_RADAR_GRID,
-        (radar_rect.left, radar_center[1]),
-        (radar_rect.right, radar_center[1]),
-        1,
-    )
+    pygame.draw.line(screen, COLOUR_RADAR_GRID,
+                     (radar_center[0], radar_rect.top), (radar_center[0], radar_rect.bottom), 1)
+    pygame.draw.line(screen, COLOUR_RADAR_GRID,
+                     (radar_rect.left, radar_center[1]), (radar_rect.right, radar_center[1]), 1)
 
     for plane in planes:
         draw_aircraft(screen, font, plane, active=(plane.callsign == active_cs))
@@ -223,15 +206,15 @@ def draw_radar(screen, planes, font, messages, conflicts,
         cy += 18
 
     pygame.draw.rect(screen, COLOUR_SIDEBAR_BG, sidebar_rect)
-    pygame.draw.line(
-        screen,
-        COLOUR_SIDEBAR_BORDER,
-        (sidebar_rect.left, sidebar_rect.top),
-        (sidebar_rect.left, sidebar_rect.bottom),
-        1,
-    )
+    pygame.draw.line(screen, COLOUR_SIDEBAR_BORDER,
+                     (sidebar_rect.left, sidebar_rect.top),
+                     (sidebar_rect.left, sidebar_rect.bottom), 1)
 
     display_plane = selected_plane or next((p for p in planes if p.callsign == active_cs), None)
+
+    hover_timestamp = None
+    hover_pos = (0, 0)
+    mx, my = pygame.mouse.get_pos()
 
     if display_plane:
         cs = display_plane.callsign
@@ -243,8 +226,7 @@ def draw_radar(screen, planes, font, messages, conflicts,
 
         log = radio_log.get(cs, []) if radio_log else []
         if not log:
-            screen.blit(font.render("(no messages yet)", True, COLOUR_MSG_PLACEHOLDER),
-                        (x0, y))
+            screen.blit(font.render("(no messages yet)", True, COLOUR_MSG_PLACEHOLDER), (x0, y))
         else:
             max_lines = max(5, (sidebar_rect.height - 60) // 18)
             start = max(0, len(log) - max_lines - radio_scroll)
@@ -252,26 +234,36 @@ def draw_radar(screen, planes, font, messages, conflicts,
             subset = log[start:end]
 
             for line in subset:
-                color = COLOUR_MSG_CTRL if line.startswith("CTRL") else COLOUR_MSG_TEXT
-                for wrapped in wrap_text(line, font, sidebar_rect.width - 20):
+                if isinstance(line, dict):
+                    msg = line.get("text", "")
+                    ts = line.get("timestamp")
+                else:
+                    msg = line
+                    ts = None
+
+                color = COLOUR_MSG_CTRL if msg.startswith("CTRL") else COLOUR_MSG_TEXT
+
+                for wrapped in wrap_text(msg, font, sidebar_rect.width - 20):
                     if y > sidebar_rect.bottom - 20:
                         break
-                    screen.blit(font.render(wrapped, True, color), (x0, y))
+
+                    text_surface = font.render(wrapped, True, color)
+                    text_rect = text_surface.get_rect(x=x0, y=y)
+                    screen.blit(text_surface, text_rect)
+
+                    if text_rect.collidepoint(mx, my) and ts:
+                        hover_timestamp = ts
+                        hover_pos = (mx, my)
+
                     y += 18
 
             if len(log) > max_lines:
                 total = len(log) - max_lines
                 bar_area_h = sidebar_rect.height - 80
                 bar_h = max(20, int(bar_area_h * (max_lines / len(log))))
-                bar_y = int(
-                    sidebar_rect.y + 40
-                    + (radio_scroll / max(total, 1)) * (bar_area_h - bar_h)
-                )
-                pygame.draw.rect(
-                    screen,
-                    COLOUR_MSG_SCROLLBAR,
-                    (sidebar_rect.right - 10, bar_y, 6, bar_h),
-                )
+                bar_y = int(sidebar_rect.y + 40 + (radio_scroll / max(total, 1)) * (bar_area_h - bar_h))
+                pygame.draw.rect(screen, COLOUR_MSG_SCROLLBAR,
+                                 (sidebar_rect.right - 10, bar_y, 6, bar_h))
     else:
         msg = "Click a plane to view log"
         max_width = sidebar_rect.width - 20
@@ -281,9 +273,28 @@ def draw_radar(screen, planes, font, messages, conflicts,
             msg_font = pygame.font.SysFont(DEFAULT_FONT, new_size)
 
         lines = wrap_text(msg, msg_font, max_width)
-
         y = sidebar_rect.y + 10
         for line in lines:
             txt = msg_font.render(line, True, COLOUR_MSG_HINT)
             screen.blit(txt, (sidebar_rect.x + 10, y))
             y += msg_font.get_height() + 2
+
+    if hover_timestamp:
+        tooltip_font = pygame.font.SysFont(DEFAULT_FONT, max(12, int(layout["FONT_SIZE_SIDEBAR"] * 0.9)))
+        tooltip_text = tooltip_font.render(hover_timestamp, True, (255, 255, 255))
+        pad = 6
+        bg_rect = pygame.Rect(
+            hover_pos[0] + 14,
+            hover_pos[1] + 14,
+            tooltip_text.get_width() + pad * 2,
+            tooltip_text.get_height() + pad * 2
+        )
+
+        if bg_rect.right > window_w - 10:
+            bg_rect.x = window_w - bg_rect.width - 10
+        if bg_rect.bottom > window_h - 10:
+            bg_rect.y = window_h - bg_rect.height - 10
+
+        pygame.draw.rect(screen, (30, 30, 40), bg_rect, border_radius=4)
+        pygame.draw.rect(screen, (100, 255, 100), bg_rect, 1, border_radius=4)
+        screen.blit(tooltip_text, (bg_rect.x + pad, bg_rect.y + pad))

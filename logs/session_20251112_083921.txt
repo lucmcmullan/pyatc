@@ -1,0 +1,6 @@
+U2951: roger U2951, hold position, standby for takeoff clearance
+U2951: Takeoff clearance missing parameters
+LM644: roger LM644, hold position, standby for takeoff clearance
+W9918: roger W9918, hold position, standby for takeoff clearance
+U2951: Cleared for takeoff runway 27r, climb to 5 feet, maintain 5200 knots, Easy 951
+U2059: roger U2059, hold position, standby for takeoff clearance

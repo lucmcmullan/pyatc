@@ -10,7 +10,6 @@ import traceback
 from collections import defaultdict
 from typing import Optional
 
-# --- Core project imports ---
 from update_checker import check_for_update
 from atc.ai.voice import speak
 from atc.ai.controller import AIController
@@ -30,20 +29,37 @@ from constants import (
     FPS, SIM_SPEED, ERROR_LOG_FILE, RESPONSE_VOICE,
     INITIAL_PLANE_COUNT, DEFAULT_FONT, WINDOW_FLIGHT_PROGRESS,
     WINDOW_MAIN, FUNCTION_KEYS, WINDOW_PERFORMANCE, HELP_TEXT,
-    COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT, WINDOW_ERROR,
-    AI_TRAFFIC, WINDOW_HELP, ACK_DELAY_RANGE, AI_HELPER
+    COLOUR_CONSOLE_BG, COLOUR_CONSOLE_TEXT, WINDOW_ERROR, TRAFFIC_MAX,
+    AI_TRAFFIC, WINDOW_HELP, ACK_DELAY_RANGE, RUNWAY_TAKEOFF_DELAY_S,
+    MSG_TAKEOFF_ACK, MSG_REQUEST_TAKEOFF, SPAWN_INTERVAL_S
 )
 
 parser = CommandParser()
 VERSION = get_current_version()
 fatal_error = None
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"  # hide pygame welcome text
-clock = pygame.time.Clock()
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 log_dir = "logs"
 os.makedirs(log_dir, exist_ok=True)
 session_name = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 session_log_path = os.path.join(log_dir, f"session_{session_name}.txt")
+
+def setup_window():
+    info = pygame.display.Info()
+    screen_w, screen_h = info.current_w, info.current_h
+    width = max(800, screen_w - 120)
+    height = max(600, screen_h - 120)
+
+    has_update, remote_version = check_for_update(VERSION)
+    if has_update and remote_version:
+        pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION} - Update available: {remote_version}")
+        show_modal("Update Available", f"A new version ({remote_version}) is available.\nLet a developer know to update this machine.")
+        update_info = {"remote": remote_version, "local": VERSION}
+    else:
+        pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION}")
+        update_info = None
+
+    return width, height, update_info
 
 def autocomplete(state):
     """Auto-complete callsigns when TAB is pressed."""
@@ -64,9 +80,25 @@ def autocomplete(state):
     state["input_str"] = completed
     state["cursor_pos"] = len(state["input_str"])
 
+def schedule_delayed_ack(state, cs: str, ack_msg: str, delay_range, prefix_callsign: bool = True):
+    delay = random.uniform(*delay_range)
+
+    def _do_ack():
+        if prefix_callsign:
+            text = f"{cs}: {ack_msg}"
+        else:
+            text = ack_msg
+
+        state["radio_log"][cs].append({
+            "text": text,
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S UTC"),
+        })
+        log_radio(f"{cs}: {ack_msg}")
+        speak(ack_msg)
+
+    threading.Timer(delay, _do_ack).start()
 
 def cleanup_old_logs(log_dir="logs", days=30):
-    """Clean up old log files (older than `days`) at runtime."""
     if not os.path.exists(log_dir):
         return
 
@@ -122,7 +154,6 @@ def handle_keyboard_input(event, state):
     layout = calculate_layout(info.current_w, info.current_h)
     key = event.key
 
-    # command parsing
     if key == pygame.K_RETURN and state["input_str"].strip():
         state["messages"].append("> " + state["input_str"])
         results = parser.parse(state["input_str"], state["planes"])
@@ -133,22 +164,19 @@ def handle_keyboard_input(event, state):
             state["cursor_pos"] = 0
             return
 
-        # send message + pilot reply
         if isinstance(results, list):
+            timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S UTC")
             segments = [seg.strip() for seg in state["input_str"].split("|") if seg.strip()]
             for res in results:
                 cs, ctrl_msg, ack_msg = res["callsign"], res["ctrl_msg"], res["ack_msg"]
                 state["messages"].append(ctrl_msg)
                 cs_segment = next((seg for seg in segments if seg.startswith(cs)), state["input_str"])
-                state["radio_log"][cs].append(f"CTRL: {cs_segment}")
+                state["radio_log"][cs].append({
+                    "text": f"CTRL: {cs_segment}",
+                    "timestamp": timestamp
+                })
 
-                delay = random.uniform(*ACK_DELAY_RANGE)
-
-                def delayed_ack(cs=cs, ack_msg=ack_msg):
-                    state["radio_log"][cs].append(f"{cs}: {ack_msg}")
-                    speak(ack_msg)
-
-                threading.Timer(delay, delayed_ack).start()
+                schedule_delayed_ack(state, cs, ack_msg, ACK_DELAY_RANGE, prefix_callsign=True)
 
         # reset console input
         state["input_str"] = ""
@@ -205,6 +233,42 @@ def handle_update_modal_event(event: pygame.event.Event, state: dict):
             return True
     return False
 
+def handle_aircraft_spawning(state, dt):
+    """
+    Spawns new AI aircraft at intervals, up to TRAFFIC_MAX.
+    Occasionally places aircraft on runways to request takeoff.
+    """
+
+    if "spawn_timer" not in state:
+        state["spawn_timer"] = 0.0
+        print("spawn timer not in state, creating...")
+
+    if len(state["planes"]) >= TRAFFIC_MAX:
+        return
+
+    # increment timer
+    state["spawn_timer"] += dt
+    if state["spawn_timer"] >= SPAWN_INTERVAL_S:
+        new_id = len(state["planes"]) + 1
+        new_plane = spawn_random_plane(new_id)
+        state["planes"].append(new_plane)
+        state["spawn_timer"] = 0.0
+        
+        print(f"[SPAWN] {new_plane.callsign} added (runway={getattr(new_plane, 'on_runway', False)})")
+
+        if getattr(new_plane, "on_runway", False):
+            rwy = new_plane.assigned_runway or "XX"
+            msg = MSG_REQUEST_TAKEOFF.format(cs=new_plane.callsign, rwy=rwy)
+            state["radio_log"][new_plane.callsign].append({
+                "text": msg,
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S UTC"),
+            })
+
+            # voice & delayed response from controller
+            schedule_delayed_ack(state, new_plane.callsign, MSG_TAKEOFF_ACK.format(cs=new_plane.callsign), RUNWAY_TAKEOFF_DELAY_S, prefix_callsign=False)
+            print(f"[RUNWAY] {new_plane.callsign} spawned on runway {rwy}, requesting takeoff.")
+
+
 
 def handle_mouse_input(event, state, layout):
     """Handles all radar + sidebar mouse interactions (selection, scrolling)."""
@@ -243,7 +307,6 @@ def update_simulation(state, dt):
     except Exception:
         handle_exception(*sys.exc_info())
 
-    # Conflict detection and shared state sync
     state["conflicts"] = check_conflicts(state["planes"])
 
     # sync live data to detachable windows
@@ -315,22 +378,8 @@ def main():
     pygame.init()
     pygame.key.set_repeat(300, 50)
 
-    # Window setup
-    info = pygame.display.Info()
-    screen_w, screen_h = info.current_w, info.current_h
-    WIDTH = max(800, screen_w - 120)
-    HEIGHT = max(600, screen_h - 120)
-
-    # Check for updates at startup
-    has_update, remote_version = check_for_update(VERSION)
-    if has_update and remote_version:
-        pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION} - Update available: {remote_version}")
-        update_info = {"remote": remote_version, "local": VERSION}
-        show_modal("Update Available", f"A new version ({remote_version}) is available.\nLet a developer know to update this machine.")
-    else:
-        print("PyATC up-to-date!")
-        pygame.display.set_caption(f"{WINDOW_MAIN} {VERSION}")
-        update_info = None
+    
+    WIDTH, HEIGHT, update_info = setup_window()
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
     clock = pygame.time.Clock()
@@ -369,8 +418,7 @@ def main():
         if state.get("ai_enabled"):
             ai.update(state["planes"], state["runways"], dt)
 
-        # if AI_HELPER:
-        #     ml.update_async(state["planes"], state["runways"])
+        handle_aircraft_spawning(state, dt)
 
         # events
         for event in pygame.event.get():
@@ -401,7 +449,7 @@ def main():
 
         # screen draws
         draw_radar(
-            screen, state["planes"], font_radar, state["messages"], state["conflicts"],
+            screen, state["planes"], font_radar, state["conflicts"],
             radio_log=state["radio_log"], active_cs=state["active_cs"],
             selected_plane=state["selected_plane"], radio_scroll=state["radio_scroll"],
             runways=state["runways"]
