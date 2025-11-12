@@ -187,4 +187,4 @@
         2.4.3 - Bug fixes
             - Added aircraft type to profile
             - Fixed altitude graph displaying "upside down"
-            
+            - 3 new aircraft profiles

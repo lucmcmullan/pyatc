@@ -1,0 +1,2 @@
+RK650: roger RK650, hold position, standby for takeoff clearance
+RK585: roger RK585, hold position, standby for takeoff clearance

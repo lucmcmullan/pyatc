@@ -1,0 +1,56 @@
+{
+  "icao": "A359",
+  "mass": {
+    "empty_kg": 140000,
+    "mtow_kg": 280000,
+    "mlw_kg": 207000,
+    "mzf_kg": 192000,
+    "fuel_capacity_kg": 141000
+  },
+  "thrust": {
+    "type": "thrust_pct",
+    "available": [
+      { "alt_ft": 0, "thrust_pct": 100, "thrust_kn": 680 },
+      { "alt_ft": 10000, "thrust_pct": 100, "thrust_kn": 600 },
+      { "alt_ft": 20000, "thrust_pct": 100, "thrust_kn": 520 },
+      { "alt_ft": 30000, "thrust_pct": 100, "thrust_kn": 430 },
+      { "alt_ft": 40000, "thrust_pct": 100, "thrust_kn": 360 }
+    ]
+  },
+  "drag": {
+    "base_cd": 0.027,
+    "gear_cd": 0.034,
+    "flaps": [
+      { "state": 0, "cd": 0.0, "cl": 0.32 },
+      { "state": 1, "cd": 0.02, "cl": 0.55 },
+      { "state": 2, "cd": 0.04, "cl": 0.78 },
+      { "state": 3, "cd": 0.07, "cl": 1.05 }
+    ]
+  },
+  "fuel": {
+    "burn_kg_per_hr_vs_thrust": [
+      { "thrust_pct": 30, "kg_per_hr": 8500 },
+      { "thrust_pct": 60, "kg_per_hr": 15500 },
+      { "thrust_pct": 90, "kg_per_hr": 23000 },
+      { "thrust_pct": 100, "kg_per_hr": 26000 }
+    ]
+  },
+  "performance": {
+    "roc_fpm_vs_weight": [
+      { "weight_kg": 180000, "roc_fpm": 3500 },
+      { "weight_kg": 240000, "roc_fpm": 2500 },
+      { "weight_kg": 280000, "roc_fpm": 1800 }
+    ],
+    "rod_fpm_vs_weight": [
+      { "weight_kg": 180000, "rod_fpm": 2600 },
+      { "weight_kg": 240000, "rod_fpm": 2100 },
+      { "weight_kg": 280000, "rod_fpm": 1700 }
+    ]
+  },
+  "limits": {
+    "stall_ias_kts": 145,
+    "vfe_kts_by_flap": { "1": 265, "2": 245, "3": 220 },
+    "best_cruise_mach": 0.85
+  },
+  "atmosphere": { "qnh_hpa": 1013.25, "isa_deviation_c": 0 }
+}

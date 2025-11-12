@@ -1,0 +1,56 @@
+{
+  "icao": "B738",
+  "mass": {
+    "empty_kg": 41400,
+    "mtow_kg": 79015,
+    "mlw_kg": 66360,
+    "mzf_kg": 62700,
+    "fuel_capacity_kg": 20800
+  },
+  "thrust": {
+    "type": "thrust_pct",
+    "available": [
+      { "alt_ft": 0, "thrust_pct": 100, "thrust_kn": 536 },
+      { "alt_ft": 10000, "thrust_pct": 100, "thrust_kn": 470 },
+      { "alt_ft": 20000, "thrust_pct": 100, "thrust_kn": 400 },
+      { "alt_ft": 30000, "thrust_pct": 100, "thrust_kn": 330 },
+      { "alt_ft": 40000, "thrust_pct": 100, "thrust_kn": 270 }
+    ]
+  },
+  "drag": {
+    "base_cd": 0.03,
+    "gear_cd": 0.032,
+    "flaps": [
+      { "state": 0, "cd": 0.0, "cl": 0.35 },
+      { "state": 1, "cd": 0.02, "cl": 0.55 },
+      { "state": 2, "cd": 0.05, "cl": 0.8 },
+      { "state": 3, "cd": 0.08, "cl": 1.1 }
+    ]
+  },
+  "fuel": {
+    "burn_kg_per_hr_vs_thrust": [
+      { "thrust_pct": 30, "kg_per_hr": 2200 },
+      { "thrust_pct": 60, "kg_per_hr": 4000 },
+      { "thrust_pct": 90, "kg_per_hr": 6000 },
+      { "thrust_pct": 100, "kg_per_hr": 6800 }
+    ]
+  },
+  "performance": {
+    "roc_fpm_vs_weight": [
+      { "weight_kg": 55000, "roc_fpm": 3800 },
+      { "weight_kg": 70000, "roc_fpm": 2600 },
+      { "weight_kg": 79000, "roc_fpm": 2000 }
+    ],
+    "rod_fpm_vs_weight": [
+      { "weight_kg": 55000, "rod_fpm": 2800 },
+      { "weight_kg": 70000, "rod_fpm": 2400 },
+      { "weight_kg": 79000, "rod_fpm": 2000 }
+    ]
+  },
+  "limits": {
+    "stall_ias_kts": 135,
+    "vfe_kts_by_flap": { "1": 250, "2": 230, "3": 210 },
+    "best_cruise_mach": 0.78
+  },
+  "atmosphere": { "qnh_hpa": 1013.25, "isa_deviation_c": 0 }
+}

@@ -287,4 +287,4 @@ NOTES
 PyATC © 2025 Luc McMullan
 """
 
-PLANE_TYPES = ["A320", "B747", "E190", "C172"]
+PLANE_TYPES = ["A320", "B747", "E190", "C172", "B77W", "A359", "B738"]
